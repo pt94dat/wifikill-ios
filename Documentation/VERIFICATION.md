@@ -1,6 +1,15 @@
-# Current audit
+# Current verification — 0.3.0-beta.1
 
-For 0.3.0-beta.1 see [ENGINEERING_AUDIT.md](ENGINEERING_AUDIT.md), current generated release metadata and the release workflow. The record below describes the historical 0.2 release only.
+[Consolidated audit, fixes, limitations and exact release evidence](ENGINEERING_AUDIT.md).
+
+- Source: `ddad63f1282cb60ae1cfc62ca99ac9dd512f5c55`.
+- [Build, real lab, deployment and exact public verification: passed](https://github.com/pt94dat/wifikill-ios/actions/runs/45978787339).
+- 25 Python/portable-C tests and native Foundation assertions passed.
+- 25 real isolated gateway checks passed. Physical iPhone and public Internet tests remain pending.
+- Published .deb independently downloaded and validated: 60,358 bytes, SHA256 `c82fe460856e2ded3fba416054fd843e24f9bb4fd4f0424fc2b6606eae954425`.
+- Previous two immutable packages retained.
+
+The following is the historical 0.2 release record, not the current release result.
 
 # Verification gates — 0.2.0-beta.1
 

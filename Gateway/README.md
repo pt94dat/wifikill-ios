@@ -43,3 +43,5 @@ Download the [versioned gateway bundle](https://pt94dat.github.io/wifikill-ios/g
 The service bounds concurrent TLS handshakes; an idle handshake does not block the accept loop. SIGTERM/SIGINT initiate graceful shutdown and flush only its own timed set. SIGKILL cannot run cleanup; kernel lease expiry provides bounded recovery. Production installer/systemd/Avahi behavior requires acceptance on the selected gateway. The CI namespace lab runs the actual agent and nftables, not systemd or a physical router.
 
 To uninstall: `sudo systemctl disable --now languard-gateway`; remove `/etc/systemd/system/languard-gateway.service`, `/etc/avahi/services/languard-gateway.service` if installed, and `/opt/languard-gateway`; run `sudo systemctl daemon-reload`. Remove credentials/config only when no longer needed. Delete only `inet languard` if it remains.
+
+The enforced hook covers LAN-to-WAN forwarded packets from the selected MAC. Tests cover client-initiated sessions; ongoing unsolicited inbound traffic and full bidirectional isolation are not independently established.

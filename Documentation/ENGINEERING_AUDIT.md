@@ -9,7 +9,7 @@ Review date: 2026-11-27. This is an independently implemented engineering beta. 
 | [NetCut / Arcai](https://www.arcai.com/) | Android product describes root/superuser requirements and ARP-related operation. Public reusable source/license and universal compatibility were not established. | Product reference only; no copied code or unauthorized mechanism. |
 | User-provided WiFiKill Free 1.1.2 APK | Earlier actual static inspection identified DEX/native/root-related implementation. Artifact SHA256: `1740186ff063ae5e1eca007521d2d26b6ccf02b4ee470b3a3925be0ffa729006`. Static presence is not execution evidence. | Reference only; no Android binaries, tracking SDKs or proprietary implementation redistributed. |
 | [Gokuencinar / Nuke Wireless](https://github.com/Gokuencinar/GokuEnREPO) | Current primary README labels Nuke Wireless “In Development”; current public package evidence does not establish a usable 1.0.2 source release or iOS 15–18 support. Conflicting secondary release claims remain unverified. | Not treated as an available implementation or iOS 12 dependency. |
-| [emp0ry / LocalFence](https://github.com/emp0ry/LocalFence) | Public source; GPL-3.0-or-later; rootless iOS 16+ target. Has discovery, daemon identity validation and conservative naming concepts. | Study only; no GPL code copied into this MIT project. Its runtime is not an iOS 12 drop-in. |
+| [emp0ry / LocalFence](https://github.com/emp0ry/LocalFence) | Public source; GPL-3.0-or-later; rootless iOS 16+ target. Primary release tags v0.2.0 and v0.2.1 are dated 2026-08-09; an installation store is distinct from this source repository. Has discovery, daemon identity validation and conservative naming concepts. | Study only; no GPL code copied into this MIT project. Its runtime is not an iOS 12 drop-in. |
 | [Harpy Reloaded / Chariz](https://chariz.com/buy/harpy-reloaded) | MidnightChips, version 1.0.1, dated 2021-09-17, jailbroken iOS 14.0–14.8. Public reusable source/license not established. | Product comparison only; neither compatibility nor ARP implementation imported. |
 | [Apple XNU 4903.241.1 rtsock.c](https://github.com/apple-oss-distributions/xnu/blob/xnu-4903.241.1/bsd/net/rtsock.c), [route.c](https://github.com/apple-oss-distributions/xnu/blob/xnu-4903.241.1/bsd/net/route.c) | iOS 12-family source distinguishes privileged link-layer read mode from ordinary scrubbed route dumps and checks route-read permission. Exact phone kernel/jailbreak permission remains unmeasured. | Attempt read-only mode 10, fall back normally, expose result. Do not grant private entitlements or claim root guarantees MAC visibility. |
 | [Apple Bonjour](https://developer.apple.com/library/archive/documentation/NetworkingInternetWeb/Conceptual/NSNetServiceProgGuide/Articles/BrowsingForServices.html), [RFC 1002](https://www.rfc-editor.org/rfc/rfc1002) | Standard service advertisements and node-status packet structures. They report observations, not authenticated physical identity. | Independently implemented bounded Bonjour/NetBIOS enrichment. |
@@ -58,3 +58,38 @@ This is not a completed universal NetCut replacement. The current user network h
 Required on-device checks for this release: upgrade/install/launch on iOS 12.5.8; inspect keyboard dismissal, scrolling and text at large sizes; scan cancel/background/network-change behavior; compare identity observations with gateway records; configure trusted TLS/token on an administered compatible gateway; restrict a consenting test client and independently test its IPv4/IPv6 Internet, restore it, test expiry and recovery. No physical performance, crash-free runtime, universal MAC recovery or installer/systemd/Avahi acceptance is claimed by compilation or namespaces.
 
 Topology beyond routed Ethernet, embedded firmware without prerequisites, alternate uplinks and hardware fast paths require another tested adapter or explicit unsupported status. No ARP spoofing, deauthentication, interception, credential bypass or unauthorized access-control feature was implemented or deferred as a promised next step.
+
+## Architecture alternatives evaluated
+
+| Alternative | Compatibility / setup | Decision |
+|---|---|---|
+| Standard local cache and DNS only | iOS 12 APIs, minimal setup, OS redaction and silent clients limit identity | Retain and supplement; cannot supply management authority. |
+| Privileged local reader/daemon | Exact jailbreak permissions and signing must be established; a daemon alone cannot create authorized router control | Use existing read-only capability first; no new privileged daemon or unsupported entitlement. |
+| Vendor management API | Potentially legitimate with enrollment, but each firmware/API requires an actual tested adapter | Extension point preserved; no unimplemented vendor claimed as supported. |
+| Explicit Linux forwarding agent | Requires administered gateway, TLS and enrollment; same protocol across suitable hardware | Deployable implementation and real kernel lab; configuration remains necessary once. |
+| Unauthorized disruption/interception | Does not meet project authorization contract | Excluded. |
+
+Performance changes are bounded-work design changes, not measured speed gains on A8: 12 probe workers, 300 ms TCP, 400 ms PTR, 150 ms directed NBNS and 1.5 s Bonjour collection. Identification can add scan time. No physical memory, battery or frame-rate benchmark was performed.
+
+The implemented kernel policy drops the selected MAC's LAN-to-WAN forwarded packets. The lab proves client-initiated IPv4/IPv6 traffic restriction and restoration. It does not establish filtering of every ongoing unsolicited WAN-to-LAN stream, all device protocols or alternate network paths; do not advertise complete bidirectional network isolation.
+
+## Final published release record
+
+| Evidence | Result |
+|---|---|
+| Version / package identifier | 0.3.0-beta.1 / com.pt94dat.wifikillios |
+| Exact application source commit | `ddad63f1282cb60ae1cfc62ca99ac9dd512f5c55` |
+| [Branch preflight](https://github.com/pt94dat/wifikill-ios/actions/runs/45978249284) | Successful; deployment intentionally skipped |
+| [Main release run](https://github.com/pt94dat/wifikill-ios/actions/runs/45978787339) | Lab, native build, package validation, Pages deployment and exact public verification all passed |
+| Python / portable C | 25 passed on release source, plus native Foundation state assertions passed |
+| Actual isolated kernel lab | 25/25 passed on release source; HTTPS, IPv4/IPv6 restriction/restoration, protected peers, stalled TLS, graceful stop, restart, 30-second crash expiry, unrelated firewall preservation |
+| Compiler | Xcode 16.4 / pinned Theos / native ARM64 / minimum iOS 12.0 |
+| Public package | 60,358 bytes; independently downloaded and revalidated locally after deployment |
+| Package SHA256 | `c82fe460856e2ded3fba416054fd843e24f9bb4fd4f0424fc2b6606eae954425` |
+| Gateway archive SHA256 | `8596fb62ab42cfb5f5f5d13ed8623433398666408cc5636ab1c22fc7f6d8b3cf` |
+| Historical packages | 0.1.0-beta.1 and 0.2.0-beta.1 retained with original SHA256 |
+| Physical acceptance of 0.3 | Pending; not inferred from earlier installation feedback |
+
+[Direct Debian package](https://pt94dat.github.io/wifikill-ios/debs/com.pt94dat.wifikillios_0.3.0-beta.1_iphoneos-arm.deb) · [Existing Sileo source](https://pt94dat.github.io/wifikill-ios/) · [Gateway bundle](https://pt94dat.github.io/wifikill-ios/gateway/languard-gateway-0.3.0-beta.1.tar.gz) · [Installation instructions](../Gateway/README.md).
+
+APT metadata remains unsigned by GPG; HTTPS and generated checksums verify transport/content consistency, not an independent repository signing identity. Documentation-only updates after publication do not change the application source commit recorded in release metadata.
