@@ -1,12 +1,18 @@
 # LanGuard — native iOS network management
 
-Current development release: **0.3.0-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
+Current development release: **0.4.0-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
 
 ## Update
 
 Refresh `https://pt94dat.github.io/wifikill-ios/` in Sileo and install the offered LanGuard upgrade. Published version/hash are generated from the actual validated package. [Release metadata](https://pt94dat.github.io/wifikill-ios/release.json) and [previous releases](https://pt94dat.github.io/wifikill-ios/releases.json).
 
-## Current engineering corrections
+## Phase 4 discovery reconstruction
+
+[Consolidated phase 4 report and acceptance checklist](Documentation/PHASE4.md). Production route bytes now pass a fixture-tested parser with separate malformed/incomplete/placeholder/duplicate/conflict statistics. Scan counts are tied to one committed scan ID and reconciled against accepted/refused/local responses. DNS and Bonjour report actual module outcomes; network-scoped historical addresses expire and are not physical identities. Repeated scan workers are serialized and cancellation stops queued work and discovery delegates.
+
+Open **Diagnostics → Copy / Export** for a whitelist-redacted runtime JSON report. It excludes network names, IP/MAC/name lists, endpoints, tokens and traffic. Identity availability on iOS 12 remains conditional. No private entitlement or privacy bypass is introduced. This phase defers new Kill/Unkill work and preserves the existing authorized gateway backend.
+
+## Earlier engineering corrections
 
 Invalid/redacted MAC values are rejected. Response, cache and unknown history counts are separate. Scans use bounded concurrency and cancellation, a single neighbor snapshot, network-change checks and bounded reverse DNS. The native main screen now has device cards, status filters and concise evidence counts; technical identity and network data live in detail screens.
 

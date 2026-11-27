@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0-beta.1 — 2026-11-27
+
+- Reconstruct production Darwin neighbor parser with rejection categories, deduplication and conflicting-target suppression; ordinary read-only source only.
+- Commit coherent scan IDs/counters; separate accepted/refused/local response evidence.
+- Diagnose DNS callback failures/deadlines and Bonjour browse/resolve/pending outcomes; cancel queued and run-loop work.
+- Normalize subnet-scoped address history, future dates, seven-day expiry and /22 capacity.
+- Add native Copy/Export for redacted runtime diagnostics, actual timings and resident-memory measurement.
+- Improve placeholder contrast, duplicate-IP card subtitle and unavailable control visibility.
+- Add production-parser/resolver sanitizer fixtures and native/controlled-host DNS-SD/Bonjour gates. Physical acceptance remains pending.
+
 ## 0.3.0-beta.1 — 2026-11-27
 
 - Native scrollable identity and authorization screens; control state separated from TCP responses.

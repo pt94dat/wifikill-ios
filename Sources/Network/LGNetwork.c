@@ -67,11 +67,12 @@ int lg_network(LGNetwork *out){
 static double clock_ms(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec*1000.0+t.tv_nsec/1e6;}
 int lg_probe_detail(const char *ip,unsigned timeout_ms,double *latency_ms,int *evidence){
  if(evidence)*evidence=0;
+ if(latency_ms)*latency_ms=0;
  struct sockaddr_in a={0};a.sin_len=sizeof(a);a.sin_family=AF_INET;a.sin_port=htons(443);
  if(inet_pton(AF_INET,ip,&a.sin_addr)!=1)return 0;
  int fd=socket(AF_INET,SOCK_STREAM,0);if(fd<0)return 0;
- fcntl(fd,F_SETFL,O_NONBLOCK);double start=clock_ms();int rc=connect(fd,(void*)&a,sizeof(a));int reachable=rc==0;int kind=rc==0?1:0;if(rc<0&&errno==ECONNREFUSED){reachable=1;kind=2;}
- if(rc<0 && errno==EINPROGRESS){struct pollfd p={fd,POLLOUT,0};if(poll(&p,1,(int)timeout_ms)>0){int e=0;socklen_t len=sizeof(e);if(!getsockopt(fd,SOL_SOCKET,SO_ERROR,&e,&len))reachable=e==0||e==ECONNREFUSED;kind=e==0?1:(e==ECONNREFUSED?2:0);}}
+ if(fcntl(fd,F_SETFL,O_NONBLOCK)<0){close(fd);return 0;}double start=clock_ms();int rc=connect(fd,(void*)&a,sizeof(a));int reachable=rc==0;int kind=rc==0?1:0;if(rc<0&&errno==ECONNREFUSED){reachable=1;kind=2;}
+ if(rc<0 && errno==EINPROGRESS){struct pollfd p={fd,POLLOUT,0};if(poll(&p,1,(int)timeout_ms)>0){int e=0;socklen_t len=sizeof(e);if(!getsockopt(fd,SOL_SOCKET,SO_ERROR,&e,&len)){reachable=e==0||e==ECONNREFUSED;kind=e==0?1:(e==ECONNREFUSED?2:0);}}}
  if(latency_ms)*latency_ms=clock_ms()-start;if(evidence)*evidence=kind;close(fd);return reachable;
 }
 
@@ -82,7 +83,7 @@ LGNeighborStats lg_neighbor_stats(void){return neighbor_stats;}
 int lg_neighbor_view_status(void){return neighbor_stats.view;}
 size_t lg_neighbors(const LGNetwork *net,LGNeighbor *out,size_t capacity,unsigned *rejected){
  /* Ordinary read-only view only; no private mode/entitlement requested. */
- int mib[]={CTL_NET,PF_ROUTE,0,AF_INET,NET_RT_DUMP,0};size_t length=0;memset(&neighbor_stats,0,sizeof(neighbor_stats));
+ int mib[]={CTL_NET,PF_ROUTE,0,AF_INET,NET_RT_DUMP,0};size_t length=0;memset(&neighbor_stats,0,sizeof(neighbor_stats));if(rejected)*rejected=0;
  if(sysctl(mib,6,NULL,&length,NULL,0)){neighbor_stats.apiError=errno;neighbor_stats.view=3;return 0;}
  if(!length||length>16*1024*1024){neighbor_stats.view=3;return 0;}
  unsigned char *buffer=malloc(length);if(!buffer){neighbor_stats.apiError=ENOMEM;neighbor_stats.view=3;return 0;}
