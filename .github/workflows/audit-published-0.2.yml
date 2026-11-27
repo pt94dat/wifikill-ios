@@ -1,0 +1,37 @@
+name: Independent published release audit 0.2.0
+on:
+  push:
+    branches: [verify-release-0.2.0]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Recheck complete public APT metadata and package bytes
+        run: python3 Scripts/verify_repository.py https://pt94dat.github.io/wifikill-ios/
+      - name: Verify exact release, rollback availability and package digest
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,urllib.request
+          base='https://pt94dat.github.io/wifikill-ios/'
+          def get(path):
+              request=urllib.request.Request(base+path,headers={'Cache-Control':'no-cache'})
+              with urllib.request.urlopen(request,timeout=30) as response:
+                  return response.read()
+          current=json.loads(get('release.json'))
+          assert current['version']=='0.2.0-beta.1',current
+          assert current['source_commit']=='7a8aacae235d0987d4cf8e1f229a36daf56afe5f',current
+          data=get(current['package'])
+          assert hashlib.sha256(data).hexdigest()==current['sha256']
+          history=json.loads(get('releases.json'))
+          assert {'0.1.0-beta.1','0.2.0-beta.1'} <= {r['version'] for r in history}
+          validation=json.loads(get('package-validation.json'))
+          assert validation['sha256']==current['sha256']
+          assert validation['size']==len(data)
+          print('VERIFIED_CURRENT_RELEASE')
+          print(json.dumps(current,indent=2))
+          print('VERIFIED_PACKAGE_BYTES',len(data))
+          print('VERIFIED_ROLLBACK_RELEASES',json.dumps(history,indent=2))
+          PY
