@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""Opt-in Linux/nftables gateway adapter. No sniffing, spoofing or shell execution.
+Install only on a gateway you administer. All restrictions are kernel-timed leases.
+"""
+import argparse
+import hmac
+import ipaddress
+import json
+import os
+import re
+import ssl
+import subprocess
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from urllib.parse import urlsplit
+
+MAC = re.compile(r"(?:[0-9a-f]{2}:){5}[0-9a-f]{2}\Z")
+INTERFACE = re.compile(r"[a-zA-Z0-9_.:-]{1,15}\Z")
+TABLE = "languard"
+
+
+def mac_value(value):
+    if not isinstance(value, str) or not MAC.fullmatch(value.lower()):
+        raise ValueError("Invalid MAC address")
+    value = value.lower()
+    if int(value[:2], 16) & 1 or value == "00:00:00:00:00:00":
+        raise ValueError("Unicast MAC required")
+    return value
+
+
+class Gateway:
+    def __init__(self, config, runner=subprocess.run):
+        self.config, self.runner = config, runner
+        self.lock = threading.RLock()
+        self.lan = config["lan_interfaces"]
+        self.wan = config["wan_interfaces"]
+        if not self.lan or not self.wan or set(self.lan) & set(self.wan):
+            raise ValueError("Separate LAN and WAN interfaces required")
+        if any(not INTERFACE.fullmatch(x) for x in self.lan + self.wan):
+            raise ValueError("Invalid interface name")
+        self.protected = {mac_value(m) for m in config["protected_macs"]}
+        if not self.protected:
+            raise ValueError("Explicit host/admin protection required")
+
+    def run(self, args, text=None):
+        r = self.runner(args, input=text, text=True, capture_output=True, timeout=5)
+        if r.returncode:
+            raise RuntimeError("Gateway command failed; inspect local service logs")
+        return r.stdout
+
+    def nft(self, command):
+        return self.run(["nft", "-f", "-"], command)
+
+    def neighbors(self):
+        values = json.loads(self.run(["ip", "-j", "neigh", "show"]))
+        return [v for v in values if v.get("dev") in self.lan and v.get("lladdr") and not set(v.get("state", [])) & {"FAILED", "INCOMPLETE"}]
+
+    def check_topology(self):
+        rules = json.loads(self.run(["nft", "-j", "list", "ruleset"]))
+        # Hardware/software flow offload can bypass forward hooks. Refuse it.
+        if any("flowtable" in x for x in rules.get("nftables", [])):
+            raise ValueError("Flow offload must be disabled before using this adapter")
+        addresses = json.loads(self.run(["ip", "-j", "link", "show"]))
+        names = {v["ifname"] for v in addresses}
+        if not set(self.lan + self.wan) <= names:
+            raise ValueError("Configured network interfaces unavailable")
+        for row in addresses:
+            if row.get("address") and MAC.fullmatch(row["address"].lower()):
+                self.protected.add(row["address"].lower())
+
+    def install(self):
+        self.check_topology()
+        # Named table belongs solely to this adapter. Restart restores old leases.
+        existing = self.runner(["nft", "list", "table", "inet", TABLE], text=True, capture_output=True, timeout=5)
+        prefix = f"delete table inet {TABLE}\n" if existing.returncode == 0 else ""
+        lan = ", ".join(json.dumps(x) for x in self.lan)
+        wan = ", ".join(json.dumps(x) for x in self.wan)
+        self.nft(prefix + f'''table inet {TABLE} {{
+ set blocked {{ type ether_addr; flags timeout; timeout 300s; }}
+ chain forward {{ type filter hook forward priority -100; policy accept;
+  iifname {{ {lan} }} oifname {{ {wan} }} ether saddr @blocked counter drop
+ }}
+}}
+''')
+
+    def active(self):
+        data = json.loads(self.run(["nft", "-j", "list", "set", "inet", TABLE, "blocked"]))
+        active = {}
+        for item in data.get("nftables", []):
+            for elem in item.get("set", {}).get("elem", []):
+                value = elem
+                expires = None
+                if isinstance(elem, dict):
+                    inner = elem.get("elem", elem)
+                    value = inner.get("val")
+                    expires = inner.get("expires")
+                if isinstance(value, str) and MAC.fullmatch(value.lower()):
+                    active[value.lower()] = {"expires_ms": expires}
+        return active
+
+    def validate_target(self, mac, ip, peer):
+        mac = mac_value(mac)
+        target = ipaddress.ip_address(ip)
+        if target.is_multicast or target.is_loopback or target.is_unspecified:
+            raise ValueError("Invalid client IP")
+        neighbors = self.neighbors()
+        peer_macs = {n["lladdr"].lower() for n in neighbors if n.get("dst") == peer}
+        # An enrolled management client must itself be explicitly protected.
+        if not peer_macs or not peer_macs <= self.protected:
+            raise PermissionError("Management client must be local and explicitly protected")
+        if mac in self.protected or mac in peer_macs:
+            raise PermissionError("Host, gateway or protected device")
+        if not any(n.get("dst") == str(target) and n["lladdr"].lower() == mac for n in neighbors):
+            raise ValueError("IP/MAC mapping not confirmed on a LAN interface")
+        return mac
+
+    def restrict(self, mac, ip, seconds, peer):
+        if isinstance(seconds, bool) or not isinstance(seconds, int) or not 30 <= seconds <= 900:
+            raise ValueError("Lease must be 30–900 seconds")
+        with self.lock:
+            self.check_topology()
+            mac = self.validate_target(mac, ip, peer)
+            # update refreshes an existing element atomically; nft add is not a refresh.
+            current = self.active()
+            commands = f"delete element inet {TABLE} blocked {{ {mac} }}\n" if mac in current else ""
+            self.nft(commands + f"add element inet {TABLE} blocked {{ {mac} timeout {seconds}s }}\n")
+            verified = mac in self.active()
+            return {"restricted": verified, "router_verified": verified,
+                    "end_to_end_verified": False, "lease_seconds": seconds}
+
+    def restore(self, mac=None):
+        with self.lock:
+            if mac is None:
+                self.nft(f"flush set inet {TABLE} blocked\n")
+            else:
+                mac = mac_value(mac)
+                if mac in self.active():
+                    self.nft(f"delete element inet {TABLE} blocked {{ {mac} }}\n")
+            active = self.active()
+            return {"restricted": bool(active) if mac is None else mac in active,
+                    "router_verified": not active if mac is None else mac not in active,
+                    "end_to_end_verified": False}
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "LanGuardGateway/1"
+    protocol_version = "HTTP/1.0"
+
+    def log_message(self, fmt, *args):
+        # Never log request URLs, Authorization headers, tokens or device identities.
+        pass
+
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(8)
+
+    def reply(self, code, data):
+        body = json.dumps(data).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def dispatch(self):
+        expected = "Bearer " + self.server.token
+        if not hmac.compare_digest(self.headers.get("Authorization", ""), expected):
+            self.reply(401, {"error": "Authentication required"})
+            return
+        try:
+            if self.headers.get("Transfer-Encoding"):
+                raise ValueError("Chunked requests unsupported")
+            length = int(self.headers.get("Content-Length", "0"))
+            if not 0 <= length <= 2048:
+                raise ValueError("Invalid body size")
+            path = urlsplit(self.path)
+            if path.query or path.fragment:
+                raise ValueError("Query parameters unsupported")
+            path = path.path
+            gateway = self.server.gateway
+            body = json.loads(self.rfile.read(length)) if length else {}
+            if not isinstance(body, dict):
+                raise ValueError("JSON object required")
+            if self.command == "GET" and path == "/v1/capabilities":
+                gateway.check_topology()
+                gateway.active()  # Fail closed if the kernel table vanished.
+                data = {"protocol": "languard-gateway/1", "lease_max_seconds": 900,
+                        "scope": "configured LAN to WAN forwarding, IPv4 and IPv6",
+                        "end_to_end_verification": False}
+            elif self.command == "GET" and path == "/v1/restrictions":
+                data = {"active": gateway.active()}
+            elif self.command == "GET" and path == "/v1/devices":
+                data = {"devices": gateway.neighbors()}
+            elif self.command == "DELETE" and path == "/v1/restrictions":
+                data = gateway.restore()
+            elif path.startswith("/v1/restrictions/") and self.command in ("PUT", "DELETE"):
+                mac = mac_value(path.removeprefix("/v1/restrictions/"))
+                data = gateway.restrict(mac, body.get("ip", ""), body.get("seconds", 300), self.client_address[0]) if self.command == "PUT" else gateway.restore(mac)
+            else:
+                self.reply(404, {"error": "Unsupported operation"})
+                return
+            self.reply(200, data)
+        except (ValueError, TypeError, KeyError):
+            self.reply(400, {"error": "Invalid target, lease, topology or request"})
+        except PermissionError as e:
+            self.reply(403, {"error": str(e)})
+        except (RuntimeError, subprocess.TimeoutExpired, OSError):
+            self.reply(503, {"error": "Gateway verification unavailable; operation unverified"})
+
+    do_GET = do_PUT = do_DELETE = dispatch
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", required=True)
+    args = parser.parse_args()
+    config = json.loads(Path(args.config).read_text())
+    token = Path(config["token_file"]).read_text().strip()
+    if len(token) < 32 or not token.isascii():
+        raise ValueError("Use a random ASCII token of at least 32 characters")
+    if os.geteuid() != 0:
+        raise PermissionError("Gateway service needs root for nftables")
+    gateway = Gateway(config)
+    gateway.install()
+    server = ThreadingHTTPServer((config["listen_address"], config.get("port", 8443)), Handler)
+    server.gateway, server.token = gateway, token
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.load_cert_chain(config["certificate"], config["private_key"])
+    server.socket = context.wrap_socket(server.socket, server_side=True)
+    try:
+        server.serve_forever()
+    finally:
+        gateway.restore()
+        server.server_close()
+
+
+if __name__ == "__main__":
+    main()

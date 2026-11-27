@@ -1,0 +1,7 @@
+.theos/
+packages/
+__pycache__/
+*.pyc
+build/
+.env
+*.key

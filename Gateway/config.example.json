@@ -1,0 +1,10 @@
+{
+  "listen_address": "192.0.2.1",
+  "port": 8443,
+  "lan_interfaces": ["br-lan"],
+  "wan_interfaces": ["eth1"],
+  "protected_macs": ["02:00:00:00:00:01"],
+  "token_file": "/etc/languard/token",
+  "certificate": "/etc/languard/server.crt",
+  "private_key": "/etc/languard/server.key"
+}

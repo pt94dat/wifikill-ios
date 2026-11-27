@@ -1,0 +1,62 @@
+name: Build native ARM64 and publish validated APT repository
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-release
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install build dependencies
+        run: brew install make dpkg ldid
+      - name: Set up pinned Theos with Apple-provided Xcode SDK
+        run: |
+          git clone --recursive https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+          git -C "$RUNNER_TEMP/theos" checkout 8167f59de02fd32cf45b16bfcb1330dfa5c9974c
+          git -C "$RUNNER_TEMP/theos" submodule update --init --recursive
+          echo "THEOS=$RUNNER_TEMP/theos" >> "$GITHUB_ENV"
+          test -d "$(xcrun --sdk iphoneos --show-sdk-path)"
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+      - name: Test gateway logic
+        run: python3 -m unittest discover -s Tests -v
+      - name: Build and ad hoc sign native app
+        run: gmake clean package
+      - name: Validate package and generate repository
+        run: |
+          python3 Scripts/build_repository.py
+          python3 Scripts/verify_repository.py build/repository
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-debian-package
+          path: packages/*.deb
+          if-no-files-found: error
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/repository
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deployment
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify published HTTPS repository
+        run: python3 Scripts/verify_repository.py https://pt94dat.github.io/wifikill-ios/

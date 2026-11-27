@@ -1,0 +1,9 @@
+Package: com.pt94dat.wifikillios
+Name: LanGuard
+Version: 0.1.0-beta.1
+Architecture: iphoneos-arm
+Description: Native network discovery and authenticated gateway access management. Requires an explicitly configured compatible gateway agent for access control.
+Maintainer: pt94dat
+Author: pt94dat
+Section: Networking
+Depends: firmware (>= 12.0), firmware (<< 13.0), uikittools
