@@ -1,7 +1,7 @@
 name: Build native ARM64 and publish validated APT repository
 on:
   push:
-    branches: [main, engineering-audit]
+    branches: [main, engineering-audit, phase4-engine]
   workflow_dispatch:
 permissions:
   contents: read
@@ -42,10 +42,29 @@ jobs:
         run: |
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/model_tests.m Sources/Devices/LGDevice.m -o "$RUNNER_TEMP/model-tests"
           "$RUNNER_TEMP/model-tests"
+      - name: Test native network snapshots and sanitized diagnostics
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/network_model_tests.m Sources/Network/LGScanSnapshot.m Sources/Network/LGBonjourInventory.m Sources/Devices/LGDevice.m Sources/Diagnostics/LGDiagnostics.m -o "$RUNNER_TEMP/network-model-tests"
+          "$RUNNER_TEMP/network-model-tests"
+      - name: Compare Bonjour collection windows against an owned host advertisement
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/bonjour_native_tests.m Sources/Network/LGBonjourInventory.m -o "$RUNNER_TEMP/bonjour-native-tests"
+          "$RUNNER_TEMP/bonjour-native-tests"
+      - name: Verify real host DNS-SD against a controlled local-only PTR record
+        run: |
+          xcrun clang -Wall -Wextra -Werror -I Sources Tests/resolver_native_tests.c Sources/Network/LGResolver.c Sources/Network/LGIdentity.c -o "$RUNNER_TEMP/resolver-native-tests"
+          "$RUNNER_TEMP/resolver-native-tests"
       - name: Test gateway and portable identity logic
         run: python3 -m unittest discover -s Tests -v
       - name: Build and ldid-sign native app
-        run: gmake clean package
+        run: |
+          python3 - <<'PYINFO'
+          import os, plistlib
+          from pathlib import Path
+          p=Path('Resources/Info.plist')
+          info=plistlib.loads(p.read_bytes());info['LGSourceCommit']=os.environ['GITHUB_SHA'];p.write_bytes(plistlib.dumps(info))
+          PYINFO
+          gmake clean package
       - uses: actions/download-artifact@v4
         with:
           name: isolated-gateway-lab-results
@@ -85,6 +104,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Verify published HTTPS repository
         env:
-          EXPECTED_VERSION: 0.3.0-beta.1
+          EXPECTED_VERSION: 0.4.0-beta.1
           EXPECTED_COMMIT: ${{ github.sha }}
         run: python3 Scripts/verify_repository.py https://pt94dat.github.io/wifikill-ios/

@@ -25,10 +25,10 @@
  }return self;
 }
 - (void)render:(LGDevice*)d available:(BOOL)available{
- self.nameLabel.text=[NSString stringWithFormat:@"%@%@",d.favorite?@"★ ":@"",d.displayName];self.addressLabel.text=d.ip;self.stateLabel.text=d.status;
+ self.nameLabel.text=[NSString stringWithFormat:@"%@%@",d.favorite?@"★ ":@"",d.displayName];self.addressLabel.text=[d.displayName isEqual:d.ip]?(d.typeHint.length?d.typeHint:@"Identity unknown"):d.ip;self.stateLabel.text=d.status;
  UIColor *color=d.pending?LGStyle.amber:(d.restricted?LGStyle.red:(d.reachability>=LGReachabilityResponded?LGStyle.accent:LGStyle.muted));if(d.control==LGControlUnverified)color=LGStyle.amber;
  self.stateLabel.textColor=color;self.glyph.textColor=color;self.glyph.text=d.systemProtected?@"◇":@"◉";
- NSString *action=d.pending?@"Working…":(d.protectedDevice?@"Protected":(d.routerRulePresent?@"Unkill":@"Kill"));[self.actionButton setTitle:action forState:UIControlStateNormal];self.actionButton.enabled=available&&!d.pending&&!d.protectedDevice&&d.mac.length;
+ NSString *action=d.pending?@"Working…":(d.protectedDevice?@"Protected":(d.routerRulePresent?@"Unkill":@"Kill"));[self.actionButton setTitle:action forState:UIControlStateNormal];self.actionButton.hidden=!available&&!d.protectedDevice&&!d.pending;self.actionButton.enabled=available&&!d.pending&&!d.protectedDevice&&d.mac.length;
  self.actionButton.backgroundColor=self.actionButton.enabled?[LGStyle.accent colorWithAlphaComponent:.12]:[UIColor colorWithWhite:1 alpha:.035];[self.actionButton setTitleColor:LGStyle.accent forState:UIControlStateNormal];[self.actionButton setTitleColor:LGStyle.muted forState:UIControlStateDisabled];
  self.actionButton.accessibilityLabel=[NSString stringWithFormat:@"%@ %@",action,d.displayName];
 }

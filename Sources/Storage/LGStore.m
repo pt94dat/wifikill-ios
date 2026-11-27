@@ -22,7 +22,7 @@
 }
 + (NSArray*)observations:(NSString*)network{NSDictionary *all=[NSUserDefaults.standardUserDefaults dictionaryForKey:@"observations.v2"]?:@{};return [all[network] isKindOfClass:NSArray.class]?all[network]:@[];}
 + (void)saveObservations:(NSArray*)observations network:(NSString*)network{
- NSMutableDictionary *all=[[NSUserDefaults.standardUserDefaults dictionaryForKey:@"observations.v2"] mutableCopy]?:[NSMutableDictionary new];if(all.count>=8&&!all[network])[all removeObjectForKey:[all.allKeys sortedArrayUsingSelector:@selector(compare:)].firstObject];all[network]=observations.count>512?[observations subarrayWithRange:NSMakeRange(0,512)]:observations;[NSUserDefaults.standardUserDefaults setObject:all forKey:@"observations.v2"];
+ NSMutableDictionary *all=[[NSUserDefaults.standardUserDefaults dictionaryForKey:@"observations.v2"] mutableCopy]?:[NSMutableDictionary new];if(all.count>=8&&!all[network])[all removeObjectForKey:[all.allKeys sortedArrayUsingSelector:@selector(compare:)].firstObject];all[network]=observations.count>1022?[observations subarrayWithRange:NSMakeRange(0,1022)]:observations;[NSUserDefaults.standardUserDefaults setObject:all forKey:@"observations.v2"];
 }
 + (NSDictionary*)journal{return [NSUserDefaults.standardUserDefaults dictionaryForKey:@"operationJournal.v2"]?:@{};}
 + (void)journal:(NSDictionary*)operation key:(NSString*)key{NSMutableDictionary *values=[[self journal] mutableCopy];values[key]=operation;[NSUserDefaults.standardUserDefaults setObject:values forKey:@"operationJournal.v2"];[NSUserDefaults.standardUserDefaults synchronize];}

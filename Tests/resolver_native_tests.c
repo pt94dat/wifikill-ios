@@ -1,0 +1,12 @@
+#include "Network/LGNetwork.h"
+#include <dns_sd.h>
+#include <poll.h>
+#include <assert.h>
+#include <stdio.h>
+#include <string.h>
+static int registered;
+static void reply(DNSServiceRef ref,DNSRecordRef record,DNSServiceFlags flags,DNSServiceErrorType error,void *context){(void)ref;(void)record;(void)flags;(void)context;registered=error?error:1;}
+int main(void){DNSServiceRef ref=NULL;DNSRecordRef record=NULL;assert(!DNSServiceCreateConnection(&ref));const char *q="77.113.0.203.in-addr.arpa.";unsigned char data[64];const char *label="languard-fixture";size_t n=strlen(label);data[0]=(unsigned char)n;memcpy(data+1,label,n);data[n+1]=5;memcpy(data+n+2,"local",5);data[n+7]=0;
+ int result=DNSServiceRegisterRecord(ref,&record,kDNSServiceFlagsUnique,kDNSServiceInterfaceIndexLocalOnly,q,kDNSServiceType_PTR,kDNSServiceClass_IN,(uint16_t)(n+8),data,60,reply,NULL);assert(!result);
+ for(int i=0;i<20&&!registered;i++){struct pollfd p={DNSServiceRefSockFD(ref),POLLIN,0};if(poll(&p,1,50)>0)assert(!DNSServiceProcessResult(ref));}assert(registered==1);
+ char name[256];int code;LGDNSOutcome outcome=lg_hostname_detail("203.0.113.77",kDNSServiceInterfaceIndexLocalOnly,name,sizeof(name),1000,&code);printf("Controlled local-only PTR outcome=%d code=%d\n",outcome,code);assert(outcome==LGDNSResolved&&!strcmp(name,"languard-fixture.local"));assert(!DNSServiceRemoveRecord(ref,record,0));DNSServiceRefDeallocate(ref);puts("Actual macOS DNS-SD registration/query/deallocation passed; not an iPhone runtime test");return 0;}

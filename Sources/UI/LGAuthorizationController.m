@@ -10,13 +10,13 @@
 @implementation LGAuthorizationController
 - (void)viewDidLoad {
  [super viewDidLoad];self.title=@"Network access";self.tableView.backgroundColor=LGStyle.background;self.tableView.separatorColor=LGStyle.background;self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=80;self.tableView.keyboardDismissMode=UIScrollViewKeyboardDismissModeOnDrag;
- self.endpointField=[self field:NO];self.endpointField.text=self.gateway.endpoint;self.endpointField.placeholder=@"https://gateway-name:8443";self.endpointField.keyboardType=UIKeyboardTypeURL;
- self.tokenField=[self field:YES];self.tokenField.placeholder=@"Enrolled gateway token";
+ self.endpointField=[self field:NO];self.endpointField.text=self.gateway.endpoint;self.endpointField.attributedPlaceholder=[[NSAttributedString alloc]initWithString:@"https://gateway-name:8443" attributes:@{NSForegroundColorAttributeName:LGStyle.muted}];self.endpointField.keyboardType=UIKeyboardTypeURL;
+ self.tokenField=[self field:YES];self.tokenField.attributedPlaceholder=[[NSAttributedString alloc]initWithString:@"Enrolled gateway token" attributes:@{NSForegroundColorAttributeName:LGStyle.muted}];
  self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:@"Save" style:UIBarButtonItemStyleDone target:self action:@selector(save)];
  [NSNotificationCenter.defaultCenter addObserver:self selector:@selector(keyboard:) name:UIKeyboardWillChangeFrameNotification object:nil];
 }
 - (void)dealloc{[NSNotificationCenter.defaultCenter removeObserver:self];}
-- (UITextField*)field:(BOOL)secure{UITextField *f=[UITextField new];f.secureTextEntry=secure;f.delegate=self;f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;f.textColor=UIColor.whiteColor;f.font=[UIFont systemFontOfSize:15];f.returnKeyType=UIReturnKeyDone;return f;}
+- (UITextField*)field:(BOOL)secure{UITextField *f=[UITextField new];f.secureTextEntry=secure;f.delegate=self;f.autocapitalizationType=UITextAutocapitalizationTypeNone;f.autocorrectionType=UITextAutocorrectionTypeNo;f.textColor=UIColor.whiteColor;f.tintColor=LGStyle.accent;f.backgroundColor=LGStyle.surface;f.font=[UIFont systemFontOfSize:15];f.returnKeyType=UIReturnKeyDone;return f;}
 - (BOOL)textFieldShouldReturn:(UITextField*)textField{[textField resignFirstResponder];return YES;}
 - (void)keyboard:(NSNotification*)note{CGRect frame=[note.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];CGRect local=[self.view convertRect:frame fromView:nil];CGFloat overlap=MAX(0,CGRectGetMaxY(self.view.bounds)-CGRectGetMinY(local)-self.view.safeAreaInsets.bottom);UIEdgeInsets insets=self.tableView.contentInset;insets.bottom=overlap;self.tableView.contentInset=insets;self.tableView.scrollIndicatorInsets=insets;}
 - (NSInteger)numberOfSectionsInTableView:(UITableView*)tableView{(void)tableView;return 5;}

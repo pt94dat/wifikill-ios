@@ -2,6 +2,7 @@
 #import "LGDeviceCell.h"
 #import "LGDeviceDetailsController.h"
 #import "LGAuthorizationController.h"
+#import "Diagnostics/LGDiagnostics.h"
 #import "DesignSystem/LGStyle.h"
 #import "Network/LGScanner.h"
 #import "Network/LGIdentity.h"
@@ -34,7 +35,7 @@
  self.navigationItem.rightBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:@"Settings" style:0 target:self action:@selector(settings)];self.navigationItem.leftBarButtonItem=[[UIBarButtonItem alloc]initWithTitle:@"Scan" style:0 target:self action:@selector(scan)];
  self.refreshControl=[UIRefreshControl new];self.refreshControl.tintColor=LGStyle.accent;[self.refreshControl addTarget:self action:@selector(scan) forControlEvents:UIControlEventValueChanged];
  self.restoreButton=[[UIBarButtonItem alloc]initWithTitle:@"Restore all" style:0 target:self action:@selector(restoreAll)];
- self.toolbarItems=@[[[UIBarButtonItem alloc]initWithTitle:@"Network" style:0 target:self action:@selector(networkDetails)],[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],[[UIBarButtonItem alloc]initWithTitle:@"History" style:0 target:self action:@selector(history)],[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],self.restoreButton];self.navigationController.toolbarHidden=NO;
+ self.toolbarItems=@[[[UIBarButtonItem alloc]initWithTitle:@"Diagnostics" style:0 target:self action:@selector(networkDetails)],[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],[[UIBarButtonItem alloc]initWithTitle:@"History" style:0 target:self action:@selector(history)],[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],self.restoreButton];self.navigationController.toolbarHidden=NO;
  [self buildHeader];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(background) name:UIApplicationDidEnterBackgroundNotification object:nil];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(foreground) name:UIApplicationDidBecomeActiveNotification object:nil];[self updateContext];[self scan];[self.gateway discover];
 }
 - (void)viewDidAppear:(BOOL)animated{[super viewDidAppear:animated];[self foreground];}
@@ -119,7 +120,7 @@
  }];
 }
 - (void)render{
- self.networkLabel.text=self.context?self.context.title:@"Wi-Fi disconnected";self.connectionLabel.text=self.scanning?@"Scanning local addresses…":(self.context?@"Local network · tap Network for details":@"Connect to Wi-Fi to scan");
+ self.networkLabel.text=self.context?self.context.title:@"Wi-Fi disconnected";self.connectionLabel.text=self.scanning?@"Scanning local addresses…":(self.context?@"Local network · tap Diagnostics for evidence":@"Connect to Wi-Fi to scan");
  NSUInteger replied=0,cached=0,unknown=0,rules=0;for(LGDevice *d in self.devices){if(d.reachability>=LGReachabilityResponded)replied++;else if(d.reachability==LGReachabilityCached)cached++;else unknown++;if(d.restricted)rules++;}
  self.counts.text=[NSString stringWithFormat:@"%lu entries    %lu responded    %lu rules",(unsigned long)self.devices.count,(unsigned long)replied,(unsigned long)rules];self.subcounts.text=[NSString stringWithFormat:@"Cached %lu · Unknown %lu · Internet unverified",(unsigned long)cached,(unsigned long)unknown];
  [self.authorizationButton setTitle:self.gateway.supported?@"Authorized gateway connected  ›":@"Access control unavailable · tap to see why  ›" forState:UIControlStateNormal];[self.authorizationButton setTitleColor:self.gateway.supported?LGStyle.accent:LGStyle.amber forState:UIControlStateNormal];self.restoreButton.enabled=self.gateway.supported&&!self.pending.count&&!self.restoringAll;[self.tableView reloadData];
@@ -147,7 +148,7 @@
  }];
 }
 
-- (void)message:(NSString*)title text:(NSString*)text{if(self.presentedViewController)return;UIAlertController *a=[UIAlertController alertControllerWithTitle:title message:text preferredStyle:1];[a addAction:[UIAlertAction actionWithTitle:@"OK" style:0 handler:nil]];[self presentViewController:a animated:YES completion:nil];}
+- (void)message:(NSString*)title text:(NSString*)text{[self showText:text title:title];}
 - (void)showText:(NSString*)text title:(NSString*)title{
  UIViewController *v=[UIViewController new];v.title=title;UITextView *view=[[UITextView alloc]initWithFrame:self.view.bounds];view.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;view.backgroundColor=LGStyle.background;view.textColor=UIColor.whiteColor;view.font=[UIFont systemFontOfSize:15];view.textContainerInset=UIEdgeInsetsMake(20,20,24,20);view.editable=NO;view.text=text;v.view=view;[self.navigationController pushViewController:v animated:YES];
 }
@@ -158,13 +159,18 @@
  if(self.pending.count||self.restoringAll){[self message:@"Operation pending" text:@"Finish gateway verification before changing authorization."];return;}
  [self updateContext];LGAuthorizationController *form=[[LGAuthorizationController alloc]initWithStyle:UITableViewStyleGrouped];form.gateway=self.gateway;form.expectedNetwork=self.context.networkKey;__weak typeof(self) weakSelf=self;form.onChange=^{weakSelf.contextEpoch++;for(LGDevice *d in weakSelf.devices)d.restrictionKnown=NO;[weakSelf refreshAdapter];[weakSelf render];};[self.navigationController pushViewController:form animated:YES];
 }
+- (void)copyDiagnostics{UIPasteboard.generalPasteboard.string=[LGDiagnostics report:self.scanner.diagnostics];[self message:@"Copied" text:@"Sanitized diagnostic report copied. Network names, addresses and credentials are excluded."];}
+- (void)exportDiagnostics{
+ NSString *report=[LGDiagnostics report:self.scanner.diagnostics];NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"LanGuard-Diagnostics.json"]];NSError *error=nil;
+ if(![report writeToURL:url atomically:YES encoding:NSUTF8StringEncoding error:&error]){[self message:@"Export unavailable" text:@"Could not write the temporary diagnostic file."];return;}
+ UIActivityViewController *share=[[UIActivityViewController alloc]initWithActivityItems:@[url] applicationActivities:nil];share.popoverPresentationController.barButtonItem=self.toolbarItems.firstObject;[self presentViewController:share animated:YES completion:nil];
+}
 - (void)networkDetails{
- LGNetworkContext *context=[LGNetworkContext current];if(!context){[self message:@"Disconnected" text:@"Local Wi-Fi IPv4 is unavailable."];return;}LGNetwork n=context.network;
- NSString *text=[NSString stringWithFormat:@"NETWORK\n%@\nInterface: %s\nThis iPhone: %s\nMask: %s\nGateway: %s\nSSID: %@\n\nDISCOVERY EVIDENCE\n%@\nScan budget: %@ addresses; 12 concurrent TCP/443 probes; 300 ms each. PTR lookup budget: 400 ms; directed NetBIOS: 150 ms; Bonjour collection: 1.5 seconds. Network-reported clues are not authenticated identity.\nExcluded invalid neighbor identifiers: %@\n\nCOUNT DEFINITIONS\nResponded = TCP connection or refusal, plus this iPhone. This is address response evidence, not authenticated physical identity. Cached = valid current neighbor with no TCP response. Unknown = a previously responding address not verified now. Categories are mutually exclusive. DHCP may reassign historical addresses.\n\nACCESS CONTROL\n%@\nEndpoint: %@\nRecovery records: %lu\nOnly router rule presence/removal is verified. Target Internet access requires an independent client test.\n\nAPP\nLanGuard 0.3.0-beta.1",context.title,n.interface,n.ip,n.mask,n.gateway,context.ssid.length?context.ssid:@"Unavailable under current OS permissions",[self.scanExplanation stringByAppendingFormat:@"\nTCP accepted: %@ · refused: %@ · neighbor view: %@",self.scanner.metrics[@"tcpAccepted"]?:@0,self.scanner.metrics[@"tcpRefused"]?:@0,self.scanner.metrics[@"neighborView"]?:@0],self.scanner.metrics[@"probed"]?:@0,self.scanner.metrics[@"rejectedNeighbors"]?:@0,self.gateway.authorizationStatus,self.gateway.endpoint.length?self.gateway.endpoint:@"Not configured",(unsigned long)LGStore.journal.count];
- UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Network & diagnostics" message:@"View network evidence or perform a gateway reachability check." preferredStyle:1];
- [a addAction:[UIAlertAction actionWithTitle:@"View details" style:0 handler:^(UIAlertAction *action){(void)action;[self showText:text title:@"Network details"];}]];
- [a addAction:[UIAlertAction actionWithTitle:@"Check gateway TCP reachability" style:0 handler:^(UIAlertAction *action){(void)action;[self diagnostics];}]];
- [a addAction:[UIAlertAction actionWithTitle:@"Close" style:1 handler:nil]];[self presentViewController:a animated:YES completion:nil];
+ UIViewController *page=[UIViewController new];page.title=@"Scan diagnostics";page.view.backgroundColor=LGStyle.background;
+ UITextView *text=[UITextView new];text.translatesAutoresizingMaskIntoConstraints=NO;text.editable=NO;text.backgroundColor=LGStyle.background;text.textColor=UIColor.whiteColor;text.font=[UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];text.textContainerInset=UIEdgeInsetsMake(16,16,24,16);text.text=[LGDiagnostics report:self.scanner.diagnostics];[page.view addSubview:text];
+ [NSLayoutConstraint activateConstraints:@[[text.topAnchor constraintEqualToAnchor:page.view.safeAreaLayoutGuide.topAnchor],[text.bottomAnchor constraintEqualToAnchor:page.view.safeAreaLayoutGuide.bottomAnchor],[text.leadingAnchor constraintEqualToAnchor:page.view.leadingAnchor],[text.trailingAnchor constraintEqualToAnchor:page.view.trailingAnchor]]];
+ page.navigationItem.rightBarButtonItems=@[[[UIBarButtonItem alloc]initWithTitle:@"Export" style:0 target:self action:@selector(exportDiagnostics)],[[UIBarButtonItem alloc]initWithTitle:@"Copy" style:0 target:self action:@selector(copyDiagnostics)]];
+ [self.navigationController pushViewController:page animated:YES];
 }
 - (void)diagnostics{
  LGNetworkContext *context=[LGNetworkContext current];if(!context||!context.network.gateway[0]){[self message:@"Diagnostics" text:@"Gateway unavailable"];return;}NSString *ip=@(context.network.gateway);

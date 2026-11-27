@@ -1,6 +1,6 @@
 #import "LGDevice.h"
 @implementation LGDevice
-- (instancetype)init{if((self=[super init])){_ip=@"";_mac=@"";_name=@"";_hostname=@"";_identityKey=@"";_identitySource=@"Unavailable";_operationError=@"";_bonjourName=@"";_serviceEvidence=@"";_typeHint=@"Device type unknown";}return self;}
+- (instancetype)init{if((self=[super init])){_ip=@"";_mac=@"";_name=@"";_hostname=@"";_identityKey=@"";_identitySource=@"Unavailable";_operationError=@"";_bonjourName=@"";_serviceEvidence=@"";_typeHint=@"Device type unknown";_dnsOutcome=@"Not attempted";}return self;}
 - (BOOL)restricted{return self.restrictionKnown&&self.routerRulePresent;}
 - (BOOL)pending{return self.control==LGControlRestricting||self.control==LGControlRestoring;}
 - (NSString*)displayName{return self.name.length?self.name:(self.bonjourName.length?self.bonjourName:(self.hostname.length?self.hostname:self.ip));}
