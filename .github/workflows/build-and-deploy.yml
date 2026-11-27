@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: native-release
+  group: native-release-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   gateway-lab:
@@ -24,7 +24,9 @@ jobs:
           if-no-files-found: error
   build:
     needs: gateway-lab
-    runs-on: macos-15
+    runs-on: macos-15-intel
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Install build dependencies
