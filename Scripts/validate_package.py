@@ -57,6 +57,8 @@ def validate(package):
         info = plistlib.loads((app/'Info.plist').read_bytes())
         assert info['CFBundleIdentifier'] == fields['Package']
         assert info['MinimumOSVersion'] == '12.0'
+        if fields['Version']=='0.4.0-beta.1':
+            assert len(info.get('LGSourceCommit',''))==40, 'Source build identifier missing'
         binary = app/info['CFBundleExecutable']
         assert binary.stat().st_mode & 0o111
         data = binary.read_bytes()

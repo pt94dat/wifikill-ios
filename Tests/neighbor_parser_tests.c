@@ -11,7 +11,7 @@ static size_t record(unsigned char *p,unsigned suffix,const unsigned char *mac,u
  return h.length;
 }
 int main(void){
- unsigned char bytes[528]={0};LGNeighbor out[8];LGNeighborStats s;unsigned char valid[]={0x02,0x11,0x22,0x33,0x44,0x55},second[]={0x06,1,2,3,4,5},placeholder[]={2,0,0,0,0,0},zero[6]={0},multi[]={1,2,3,4,5,6};
+ unsigned char bytes[132*43]={0};LGNeighbor out[8];LGNeighborStats s;unsigned char valid[]={0x02,0x11,0x22,0x33,0x44,0x55},second[]={0x06,1,2,3,4,5},placeholder[]={2,0,0,0,0,0},zero[6]={0},multi[]={1,2,3,4,5,6};
  size_t n=record(bytes,20,valid,6);assert(lg_parse_neighbors(bytes,n,4,0xc0000201,0xffffff00,out,8,&s)==1);assert(!strcmp(out[0].mac,"02:11:22:33:44:55"));
  for(size_t cut=1;cut<n;cut++){assert(!lg_parse_neighbors(bytes,cut,4,0xc0000201,0xffffff00,out,8,&s));assert(s.malformed);}
  record(bytes+n,20,valid,6);assert(lg_parse_neighbors(bytes,n*2,4,0xc0000201,0xffffff00,out,8,&s)==1&&s.duplicate==1);
@@ -22,5 +22,9 @@ int main(void){
  record(bytes,20,valid,6);assert(!lg_parse_neighbors(bytes,n,7,0xc0000201,0xffffff00,out,8,&s)&&s.candidates==0);
  assert(!lg_parse_neighbors(bytes,n,4,0xc0000301,0xffffff00,out,8,&s)&&s.candidates==0);
  record(bytes,20,valid,6);assert(!lg_parse_neighbors(bytes,n,4,0xc0000201,0xffffff00,out,0,&s)&&s.capacityDropped==1);
+ for(unsigned i=0;i<43;i++){record(bytes+n*i,20+i,placeholder,6);}
+ assert(!lg_parse_neighbors(bytes,n*43,4,0xc0000201,0xffffff00,out,8,&s)&&s.placeholder==43&&s.uniqueRejected==43);
+ for(unsigned i=0;i<43;i++){record(bytes+n*i,20,placeholder,6);}
+ assert(!lg_parse_neighbors(bytes,n*43,4,0xc0000201,0xffffff00,out,8,&s)&&s.placeholder==43&&s.uniqueRejected==1);
  puts("Production Darwin parser: truncation, alignment, duplicate, conflict, redaction-pattern and valid private-MAC fixtures passed");return 0;
 }
