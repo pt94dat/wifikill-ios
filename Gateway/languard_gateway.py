@@ -24,7 +24,7 @@ def mac_value(value):
     if not isinstance(value, str) or not MAC.fullmatch(value.lower()):
         raise ValueError("Invalid MAC address")
     value = value.lower()
-    if int(value[:2], 16) & 1 or value == "00:00:00:00:00:00":
+    if int(value[:2], 16) & 1 or value in {"00:00:00:00:00:00", "02:00:00:00:00:00"}:
         raise ValueError("Unicast MAC required")
     return value
 
@@ -99,6 +99,10 @@ class Gateway:
                     active[value.lower()] = {"expires_ms": expires}
         return active
 
+    def management_authorized(self, peer):
+        peers = {n["lladdr"].lower() for n in self.neighbors() if n.get("dst") == peer}
+        return bool(peers) and peers <= self.protected
+
     def validate_target(self, mac, ip, peer):
         mac = mac_value(mac)
         target = ipaddress.ip_address(ip)
@@ -166,7 +170,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def dispatch(self):
         expected = "Bearer " + self.server.token
-        if not hmac.compare_digest(self.headers.get("Authorization", ""), expected):
+        if not hmac.compare_digest(self.headers.get("Authorization", "").encode("utf-8"), expected.encode("ascii")):
             self.reply(401, {"error": "Authentication required"})
             return
         try:
@@ -188,7 +192,8 @@ class Handler(BaseHTTPRequestHandler):
                 gateway.active()  # Fail closed if the kernel table vanished.
                 data = {"protocol": "languard-gateway/1", "lease_max_seconds": 900,
                         "scope": "configured LAN to WAN forwarding, IPv4 and IPv6",
-                        "end_to_end_verification": False}
+                        "end_to_end_verification": False,
+                        "management_authorized": gateway.management_authorized(self.client_address[0])}
             elif self.command == "GET" and path == "/v1/restrictions":
                 data = {"active": gateway.active()}
             elif self.command == "GET" and path == "/v1/devices":

@@ -24,10 +24,16 @@ jobs:
           test -d "$(xcrun --sdk iphoneos --show-sdk-path)"
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
-      - name: Test gateway logic
+      - name: Test native device state reducer
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/model_tests.m Sources/Devices/LGDevice.m -o "$RUNNER_TEMP/model-tests"
+          "$RUNNER_TEMP/model-tests"
+      - name: Test gateway and portable identity logic
         run: python3 -m unittest discover -s Tests -v
-      - name: Build and ad hoc sign native app
+      - name: Build and ldid-sign native app
         run: gmake clean package
+      - name: Preserve published releases
+        run: python3 Scripts/retain_release.py
       - name: Validate package and generate repository
         run: |
           python3 Scripts/build_repository.py

@@ -106,8 +106,6 @@ class GatewayTests(unittest.TestCase):
         self.assertIn('priority -100', script)
         self.assertIn('ether saddr @blocked', script)
 
-if __name__ == '__main__':
-    unittest.main()
 
 class HTTPBoundaryTests(unittest.TestCase):
     @classmethod
@@ -161,3 +159,14 @@ class HTTPBoundaryTests(unittest.TestCase):
     def test_unknown_control_path_rejected(self):
         code,_=self.request('PUT','/not-a-control-api','{}',self.server.token)
         self.assertEqual(code,404)
+
+class PlaceholderRegressionTests(unittest.TestCase):
+    def test_placeholder_mapping_cannot_be_control_target(self):
+        with self.assertRaises(ValueError):
+            m.mac_value('02:00:00:00:00:00')
+
+    def test_valid_private_mac_is_not_blanket_rejected(self):
+        self.assertEqual(m.mac_value('02:00:00:00:00:01'),'02:00:00:00:00:01')
+
+if __name__ == '__main__':
+    unittest.main()

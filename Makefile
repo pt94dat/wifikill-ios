@@ -4,7 +4,7 @@ DEBUG = 0
 FINALPACKAGE = 1
 include $(THEOS)/makefiles/common.mk
 APPLICATION_NAME = LanGuard
-LanGuard_FILES = $(wildcard Sources/*/*.m) Sources/Network/LGNetwork.c
+LanGuard_FILES = $(wildcard Sources/*/*.m) $(wildcard Sources/Network/*.c)
 LanGuard_FRAMEWORKS = UIKit Foundation Security SystemConfiguration
 LanGuard_CFLAGS = -fobjc-arc -Wall -Wextra -Werror=unguarded-availability-new -I Sources
 LanGuard_RESOURCE_DIRS = Resources

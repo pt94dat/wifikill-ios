@@ -1,58 +1,35 @@
 # LanGuard — native iOS network management
 
-Independent Objective-C/C implementation targeting **iPhone 6, iOS 12, ARM64, Chimera rootful**. Android reference: supplied WiFiKill APK 1.1.2. No APK code, assets, tracking SDKs or attack executables are incorporated.
+Current development release: **0.2.0-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
 
-**Status: engineering beta, not a complete implementation of the Master Prompt.** Compilation, publication and physical-device verification are independent gates. See [verification](Documentation/VERIFICATION.md) and [requirements audit](Documentation/REQUIREMENTS.md).
+## Update
 
-## Installation
+Refresh `https://pt94dat.github.io/wifikill-ios/` in Sileo and install the offered LanGuard upgrade. Published version/hash are generated from the actual validated package. [Release metadata](https://pt94dat.github.io/wifikill-ios/release.json) and [previous releases](https://pt94dat.github.io/wifikill-ios/releases.json).
 
-Published repository, when the GitHub Actions deployment succeeds:
+## Phase 2 corrections
 
-`https://pt94dat.github.io/wifikill-ios/`
+Invalid/redacted MAC values are rejected. Response, cache and unknown history counts are separate. Scans use bounded concurrency and cancellation, a single neighbor snapshot, network-change checks and bounded reverse DNS. The native main screen now has device cards, status filters and concise evidence counts; technical identity and network data live in detail screens.
 
-Add this URL in **Sileo → Sources → Add**, refresh and install **LanGuard**. The website reads the actual compiled package version and checksum. No WebClip, browser wrapper or APK emulator is installed. Do not infer device compatibility from an HTTP response or build success.
+Names can be user-defined or network-reported DNS names. Physical device type/manufacturer are not fabricated. A response or refusal is evidence about an address, not proof of current Internet access or unique physical identity.
 
-## Implemented source
+## Authorized control
 
-- Native UIKit navigation, compact dark device list and search.
-- Wi-Fi IPv4 interface, subnet and default route discovery through BSD APIs.
-- Bounded asynchronous TCP reachability scanning (/22–/30), cancellation and periodic refresh while active.
-- Read-only neighbor MAC lookup when allowed by the OS. Silent, IPv6-only or isolated devices may be missed.
-- Device names, favorites and local protection preferences; host/gateway automatically protected.
-- Gateway TCP reachability diagnostics with response time; explicit separation from Internet verification.
-- Bounded local event history and Keychain token storage.
-- HTTPS authenticated capability detection through an extensible gateway protocol.
-- Individual Kill/Unkill and Restore All through an explicitly enrolled adapter. No ARP poisoning, interception or firmware bypass.
-- Linux/nftables reference gateway agent with kernel-expiring leases; both IPv4 and IPv6 forwarded traffic match source MAC on configured Ethernet LAN/WAN paths.
-- Theos app build, ad hoc signing, Debian packaging, strict package inspection, generated flat APT metadata, checksum verification and gated GitHub Pages deployment.
+A reusable adapter protocol separates discovery from access control. The supported reference adapter is an optional authenticated HTTPS service on a Linux/nftables gateway. Local DNS-SD advertisements are untrusted suggestions; no credentials are sent automatically. There are no native stock-router adapters and no universal access-control claim.
 
-## Access control is conditional
+Setup requires an administrator-controlled compatible gateway, valid TLS, an enrolled token and explicit authorization for the current network. Credentials are endpoint-scoped in Keychain. Protected/host/gateway rows cannot be restricted. Individual Kill/Unkill performs actual gateway requests followed by separate router-set readback. Router rule presence/removal is **not** independent target Internet verification.
 
-A stock router without an authenticated control API cannot be managed by this application. Discovery is router-brand independent; access control is **not universal**.
+[Gateway setup](Gateway/README.md) · [Phase 2 findings, limits and device checklist](Documentation/PHASE2.md).
 
-This beta implements one vendor-independent **opt-in Linux/nftables agent protocol**, not native OpenWrt/MikroTik/UniFi adapters. The agent must run on the gateway itself and needs Python 3.9+, `ip`, `nft` and root. Stock firmware may not support installing it. No router configuration is changed automatically by scanning.
+## Recovery and rollback
 
-Configure the gateway only if you administer it; see [agent setup](Gateway/README.md). Enter its HTTPS endpoint and an enrolled token in app Settings. TLS requires a certificate trusted by iOS. Unsupported environments keep Kill disabled. Rules expire after **300 seconds** independently of the phone. Readback verifies the router set only; real client Internet loss/restoration remains a separate acceptance test.
+Restrictions expire after five minutes independently of app/server termination. Restore All changes only the adapter-owned LanGuard set. An interrupted-operation journal triggers readback on return. Removing the phone app does not directly remove remote rules; restore first or wait for expiry. Administrators can run `nft flush set inet languard blocked` on the enrolled gateway.
 
-## Development
+CI retains up to five prior validated public packages. An invalid build or failed retention/validation never deploys over a working release. Previously published version filenames are immutable; a correction after publication needs a new version.
 
-End users should not need to compile. CI runs on macOS using the Apple SDK installed with Xcode, with pinned Theos. For developers with Theos and a licensed SDK:
+## Build and verification
 
-```sh
-THEOS=/path/to/theos make package
-python3 -m unittest discover -s Tests -v
-python3 Scripts/build_repository.py
-python3 Scripts/verify_repository.py build/repository
-```
+Theos with an Apple-provided Xcode SDK builds/signs/packages the native ARM64 app in CI. The pipeline runs Python/portable-C tests and a native Foundation state regression executable, validates Mach-O/bundle/signature structure and APT hashes, deploys and verifies the public repository. [Workflow](.github/workflows/build-and-deploy.yml).
 
-The package validator requires `dpkg-deb`. It rejects non-ARM64 executables, missing signature structures, wrong iOS minimums, incomplete bundles and invalid registration scripts. It does not substitute for installation/launch tests.
+Physical update installation, runtime scan accuracy, Internet control, UI and performance remain separate gates. No physical-device acceptance is implied by successful compilation. [Verification](Documentation/VERIFICATION.md).
 
-## Removal, recovery and rollback
-
-Use **Restore All** before uninstalling from Sileo. Active restrictions otherwise expire in at most five minutes; removing the iOS app does not directly remove a rule on the gateway. Administrators can restore immediately using `nft flush set inet languard blocked` on their gateway. Forget authorization in Settings to delete the Keychain token. Device preferences/history may persist in the app data container after package removal; use iOS app-data removal if desired.
-
-For rollback, install a previously validated `.deb` from Actions artifacts. Keep the last working downloaded package before updating; this initial beta does not yet retain a multi-version public APT history automatically. A failed build does not deploy over the published repository.
-
-## Source reference
-
-[APK analysis](Documentation/APK_ANALYSIS.md) · [Feature mapping](Documentation/TRACEABILITY.md) · [Physical-device checklist](Documentation/DEVICE_ACCEPTANCE.md) · [CI](.github/workflows/build-and-deploy.yml)
+Detailed APK-derived metadata and device photographs are not included in this public repository. Original Android binaries, branding and tracking SDKs are not redistributed.

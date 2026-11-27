@@ -15,9 +15,14 @@ if out.exists():
     shutil.rmtree(out)
 shutil.copytree(root/'Website',out)
 (out/'debs').mkdir()
-packages=sorted((root/'packages').glob('*.deb'))
+packages=sorted((root/'build/retained').glob('*.deb'))+sorted((root/'packages').glob('*.deb'))
+packages=list({p.name:p for p in packages}.values())
 assert packages, 'No compiled packages; refusing to publish'
 entries=[]
+retained_file=root/'build/retained/releases.json'
+retained=json.loads(retained_file.read_text()) if retained_file.exists() else []
+current_versions={subprocess.check_output(['dpkg-deb','-f',str(p),'Version'],text=True).strip() for p in (root/'packages').glob('*.deb')}
+releases=[]
 for package in packages:
     result=validate(package)
     target=out/'debs'/package.name
@@ -30,8 +35,16 @@ for package in packages:
     entry+='Depiction: https://pt94dat.github.io/wifikill-ios/\n'
     entries.append(entry)
     version=result['metadata']['Version']
-    (out/'release.json').write_text(json.dumps({'name':'LanGuard','version':version,'package':'debs/'+package.name,'sha256':result['sha256'],'source_commit':os.environ.get('GITHUB_SHA',subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()),'physical_device_tests':'pending','access_control':'Compatible opt-in Linux/nftables gateway agent only; router rules verified, end-to-end Internet tests pending'},indent=2))
-    (out/'package-validation.json').write_text(json.dumps(result,indent=2))
+    previous=next((r for r in retained if r['version']==version),None)
+    metadata=previous or {'name':'LanGuard','version':version,'package':'debs/'+package.name,'sha256':result['sha256'],'source_commit':os.environ.get('GITHUB_SHA',subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()),'physical_device_tests':'pending','access_control':'Compatible configured HTTPS gateway agent required. Router rule readback and target Internet verification are separate.'}
+    assert metadata['sha256']==result['sha256'],'Refusing to replace an immutable published version'
+    releases.append(metadata)
+    (out/('validation-'+version+'.json')).write_text(json.dumps(result,indent=2))
+    if version in current_versions:
+        (out/'release.json').write_text(json.dumps(metadata,indent=2))
+        (out/'package-validation.json').write_text(json.dumps(result,indent=2))
+assert (out/'release.json').exists()
+(out/'releases.json').write_text(json.dumps(releases,indent=2))
 (out/'Packages').write_text('\n'.join(entries)+'\n')
 with (out/'Packages.gz').open('wb') as f:
     with gzip.GzipFile(filename='',mode='wb',fileobj=f,mtime=0) as g:
