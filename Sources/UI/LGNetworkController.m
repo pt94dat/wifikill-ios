@@ -72,7 +72,7 @@
 }
 - (void)scan{
  if(self.pending.count||self.restoringAll){[self.refreshControl endRefreshing];return;}
- if(self.scanning){[self.scanner cancel];self.scanning=NO;[self.activity stopAnimating];self.navigationItem.leftBarButtonItem.title=@"Scan";[self.refreshControl endRefreshing];self.scanExplanation=@"Scan cancelled; previous completed results retained";[self render];return;}
+ if(self.scanning){[self.scanner cancel];self.scanning=NO;[self.activity stopAnimating];self.navigationItem.leftBarButtonItem.title=@"Scan";[self.refreshControl endRefreshing];self.scanExplanation=@"Scan cancelled; current address snapshot retained";[self render];return;}
  [self updateContext];self.scanning=YES;self.navigationItem.leftBarButtonItem.title=@"Cancel";[self.activity startAnimating];[self render];
  [self.scanner scan:^(NSArray<LGDevice*> *devices,NSString *explanation){self.scanning=self.scanner.enriching;if(!self.scanning)[self.activity stopAnimating];[self.refreshControl endRefreshing];self.navigationItem.leftBarButtonItem.title=self.scanning?@"Cancel":@"Scan";self.scanExplanation=explanation;self.lastScan=NSDate.date;
   LGNetworkContext *scanned=self.scanner.context;NSDictionary *metrics=self.scanner.metrics;[self updateContext];if(scanned&&[scanned.fingerprint isEqual:self.context.fingerprint]){self.devices=devices;self.scanner.metrics=metrics;}else self.devices=@[];
