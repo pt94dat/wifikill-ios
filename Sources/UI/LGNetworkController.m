@@ -39,7 +39,7 @@
  [self buildHeader];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(background) name:UIApplicationDidEnterBackgroundNotification object:nil];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(foreground) name:UIApplicationDidBecomeActiveNotification object:nil];[self updateContext];[self scan];[self.gateway discover];
 }
 - (void)viewDidAppear:(BOOL)animated{[super viewDidAppear:animated];[self foreground];}
-- (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];[self.refreshTimer invalidate];self.refreshTimer=nil;[self.scanner cancel];self.scanning=NO;[self.activity stopAnimating];[self.refreshControl endRefreshing];self.navigationItem.leftBarButtonItem.title=@"Scan";}
+- (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];[self.refreshTimer invalidate];self.refreshTimer=nil;if(!self.scanner.enriching){[self.scanner cancel];self.scanning=NO;[self.activity stopAnimating];[self.refreshControl endRefreshing];self.navigationItem.leftBarButtonItem.title=@"Scan";}}
 - (UILabel*)label:(CGFloat)size color:(UIColor*)color{UILabel *v=[UILabel new];v.font=[UIFont systemFontOfSize:size weight:UIFontWeightMedium];v.textColor=color;return v;}
 - (void)buildHeader{
  UIView *header=[[UIView alloc]initWithFrame:CGRectMake(0,0,self.view.bounds.size.width,222)];
@@ -74,11 +74,11 @@
  if(self.pending.count||self.restoringAll){[self.refreshControl endRefreshing];return;}
  if(self.scanning){[self.scanner cancel];self.scanning=NO;[self.activity stopAnimating];self.navigationItem.leftBarButtonItem.title=@"Scan";[self.refreshControl endRefreshing];self.scanExplanation=@"Scan cancelled; previous completed results retained";[self render];return;}
  [self updateContext];self.scanning=YES;self.navigationItem.leftBarButtonItem.title=@"Cancel";[self.activity startAnimating];[self render];
- [self.scanner scan:^(NSArray<LGDevice*> *devices,NSString *explanation){self.scanning=NO;[self.activity stopAnimating];[self.refreshControl endRefreshing];self.navigationItem.leftBarButtonItem.title=@"Scan";self.scanExplanation=explanation;self.lastScan=NSDate.date;
+ [self.scanner scan:^(NSArray<LGDevice*> *devices,NSString *explanation){self.scanning=self.scanner.enriching;if(!self.scanning)[self.activity stopAnimating];[self.refreshControl endRefreshing];self.navigationItem.leftBarButtonItem.title=self.scanning?@"Cancel":@"Scan";self.scanExplanation=explanation;self.lastScan=NSDate.date;
   LGNetworkContext *scanned=self.scanner.context;NSDictionary *metrics=self.scanner.metrics;[self updateContext];if(scanned&&[scanned.fingerprint isEqual:self.context.fingerprint]){self.devices=devices;self.scanner.metrics=metrics;}else self.devices=@[];
   for(LGDevice *d in self.devices)[self loadPreferences:d];[self filterChanged];
   [LGStore record:[NSString stringWithFormat:@"Scan: %@ entries; %@ responses; %@ cached; %@ unknown; %@ invalid neighbor identifiers excluded",metrics[@"discovered"]?:@0,metrics[@"reachable"]?:@0,metrics[@"cached"]?:@0,metrics[@"unknown"]?:@0,metrics[@"rejectedNeighbors"]?:@0]];
-  if(self.context)[self.gateway detect:^(NSString *status){(void)status;[self refreshAdapter];}];
+  if(self.context&&!self.scanner.enriching)[self.gateway detect:^(NSString *status){(void)status;[self refreshAdapter];}];
  }];
 }
 - (NSString*)preferenceKey:(LGDevice*)d {
@@ -120,7 +120,7 @@
  }];
 }
 - (void)render{
- self.networkLabel.text=self.context?self.context.title:@"Wi-Fi disconnected";self.connectionLabel.text=self.scanning?@"Scanning local addresses…":(self.context?@"Local network · tap Diagnostics for evidence":@"Connect to Wi-Fi to scan");
+ self.networkLabel.text=self.context?self.context.title:@"Wi-Fi disconnected";self.connectionLabel.text=self.scanning?(self.scanner.enriching&&self.devices.count?@"Identifying names and advertised services…":@"Scanning local addresses…"):(self.context?@"Local network · tap Diagnostics for evidence":@"Connect to Wi-Fi to scan");
  NSUInteger replied=0,cached=0,unknown=0,rules=0;for(LGDevice *d in self.devices){if(d.reachability>=LGReachabilityResponded)replied++;else if(d.reachability==LGReachabilityCached)cached++;else unknown++;if(d.restricted)rules++;}
  self.counts.text=[NSString stringWithFormat:@"%lu entries    %lu responded    %lu rules",(unsigned long)self.devices.count,(unsigned long)replied,(unsigned long)rules];self.subcounts.text=[NSString stringWithFormat:@"Cached %lu · Unknown %lu · Internet unverified",(unsigned long)cached,(unsigned long)unknown];
  [self.authorizationButton setTitle:self.gateway.supported?@"Authorized gateway connected  ›":@"Access control unavailable · tap to see why  ›" forState:UIControlStateNormal];[self.authorizationButton setTitleColor:self.gateway.supported?LGStyle.accent:LGStyle.amber forState:UIControlStateNormal];self.restoreButton.enabled=self.gateway.supported&&!self.pending.count&&!self.restoringAll;[self.tableView reloadData];
@@ -133,7 +133,7 @@
 }
 - (NSInteger)tableView:(UITableView*)tableView numberOfRowsInSection:(NSInteger)section{(void)tableView;(void)section;return self.visible.count;}
 - (UITableViewCell*)tableView:(UITableView*)tableView cellForRowAtIndexPath:(NSIndexPath*)index{
- LGDeviceCell *cell=[tableView dequeueReusableCellWithIdentifier:@"device" forIndexPath:index];LGDevice *d=self.visible[index.row];[cell render:d available:self.gateway.supported&&!self.restoringAll&&![self.pending containsObject:d.identityKey]];cell.actionButton.tag=index.row;[cell.actionButton removeTarget:nil action:NULL forControlEvents:UIControlEventTouchUpInside];[cell.actionButton addTarget:self action:@selector(toggle:) forControlEvents:UIControlEventTouchUpInside];return cell;
+ LGDeviceCell *cell=[tableView dequeueReusableCellWithIdentifier:@"device" forIndexPath:index];LGDevice *d=self.visible[index.row];[cell render:d available:self.gateway.supported&&!self.scanner.enriching&&!self.restoringAll&&![self.pending containsObject:d.identityKey]];cell.actionButton.tag=index.row;[cell.actionButton removeTarget:nil action:NULL forControlEvents:UIControlEventTouchUpInside];[cell.actionButton addTarget:self action:@selector(toggle:) forControlEvents:UIControlEventTouchUpInside];return cell;
 }
 - (void)toggle:(UIButton*)button{if(button.tag<0||(NSUInteger)button.tag>=self.visible.count)return;LGDevice *d=self.visible[button.tag];[self operate:d restore:d.routerRulePresent];}
 - (void)operate:(LGDevice*)d restore:(BOOL)restore{

@@ -14,3 +14,6 @@ class NetworkEngineTests(unittest.TestCase):
         self.run_c('neighbor_parser_tests.c',['Sources/Network/LGNeighborParser.c','Sources/Network/LGIdentity.c'])
     def test_production_resolver_outcomes_and_cleanup(self):
         self.run_c('resolver_tests.c',['Sources/Network/LGResolver.c','Sources/Network/LGIdentity.c'],['-DLG_RESOLVER_TEST'])
+
+    def test_late_resolution_budget_matrix_and_cancellation(self):
+        self.run_c('resolver_timing_tests.c',['Sources/Network/LGResolver.c','Sources/Network/LGIdentity.c'],['-DLG_RESOLVER_TEST','-pthread'])

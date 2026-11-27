@@ -1,7 +1,7 @@
 name: Build native ARM64 and publish validated APT repository
 on:
   push:
-    branches: [main, engineering-audit, phase4-engine]
+    branches: [main, engineering-audit, phase4-engine, phase5-identity]
   workflow_dispatch:
 permissions:
   contents: read
@@ -46,11 +46,11 @@ jobs:
           "$RUNNER_TEMP/model-tests"
       - name: Test native network snapshots and sanitized diagnostics
         run: |
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/network_model_tests.m Sources/Network/LGScanSnapshot.m Sources/Network/LGBonjourInventory.m Sources/Devices/LGDevice.m Sources/Diagnostics/LGDiagnostics.m -o "$RUNNER_TEMP/network-model-tests"
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/network_model_tests.m Sources/Network/LGScanSnapshot.m Sources/Network/LGBonjourInventory.m Sources/Network/LGServiceEvidence.m Sources/Network/LGIdentity.c Sources/Devices/LGDevice.m Sources/Diagnostics/LGDiagnostics.m -o "$RUNNER_TEMP/network-model-tests"
           "$RUNNER_TEMP/network-model-tests"
       - name: Compare Bonjour collection windows against an owned host advertisement
         run: |
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/bonjour_native_tests.m Sources/Network/LGBonjourInventory.m -o "$RUNNER_TEMP/bonjour-native-tests"
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/bonjour_native_tests.m Sources/Network/LGBonjourInventory.m Sources/Network/LGServiceEvidence.m Sources/Network/LGIdentity.c Sources/Devices/LGDevice.m -o "$RUNNER_TEMP/bonjour-native-tests"
           "$RUNNER_TEMP/bonjour-native-tests"
       - name: Verify real host DNS-SD against a controlled local-only PTR record
         run: |
@@ -106,6 +106,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Verify published HTTPS repository
         env:
-          EXPECTED_VERSION: 0.4.0-beta.1
+          EXPECTED_VERSION: 0.5.0-beta.1
           EXPECTED_COMMIT: ${{ github.sha }}
         run: python3 Scripts/verify_repository.py https://pt94dat.github.io/wifikill-ios/

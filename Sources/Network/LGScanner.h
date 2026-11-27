@@ -4,6 +4,7 @@
 #import "Devices/LGDevice.h"
 @interface LGScanner:NSObject
 @property(atomic) NSUInteger generation;
+@property(nonatomic) BOOL enriching;
 @property(nonatomic,strong) NSDictionary *metrics;
 @property(nonatomic,strong) LGNetworkContext *context;
 @property(nonatomic,strong) NSDictionary *diagnostics;
