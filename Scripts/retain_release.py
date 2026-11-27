@@ -33,6 +33,7 @@ def main():
         releases=json.loads(raw)
     assert isinstance(releases,list) and len(releases)<=20
     retained=[]
+    gateway_sums=None
     for release in releases[-5:]:
         path=release['package']
         assert re.fullmatch(r'debs/com\.pt94dat\.wifikillios_[0-9A-Za-z.+~_-]+_iphoneos-arm\.deb',path)
@@ -44,6 +45,17 @@ def main():
         target.write_bytes(data)
         result=validate(target)
         assert result['metadata']['Version']==release['version']
+        if release.get('gateway_bundle'):
+            bundle=release['gateway_bundle']
+            assert re.fullmatch(r'gateway/languard-gateway-[0-9A-Za-z.+~_-]+\.tar\.gz',bundle)
+            if gateway_sums is None:
+                gateway_sums=dict(line.split()[::-1] for line in fetch('gateway/SHA256SUMS').decode().splitlines() if line.strip())
+            name=Path(bundle).name
+            assert re.fullmatch('[0-9a-f]{64}',gateway_sums[name])
+            body=fetch(bundle)
+            assert hashlib.sha256(body).hexdigest()==gateway_sums[name], 'Published gateway bundle checksum mismatch'
+            directory=DEST/'gateway';directory.mkdir(exist_ok=True)
+            (directory/name).write_bytes(body)
         retained.append(release)
     (DEST/'releases.json').write_text(json.dumps(retained,indent=2))
     print('Retained',len(retained),'validated previous releases')

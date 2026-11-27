@@ -48,11 +48,13 @@ assert (out/'release.json').exists()
 (out/'releases.json').write_text(json.dumps(releases,indent=2))
 # Distribute the actual optional Linux gateway component separately from the iOS package.
 (out/'gateway').mkdir(exist_ok=True)
+for retained_bundle in (root/'build/retained/gateway').glob('*.tar.gz'):
+    shutil.copy2(retained_bundle,out/'gateway'/retained_bundle.name)
 gateway_archive=out/'gateway/languard-gateway-0.4.0-beta.1.tar.gz'
 with tarfile.open(gateway_archive,'w:gz') as archive:
     for source in ['Gateway/languard_gateway.py','Gateway/install_gateway.py','Gateway/config.example.json','Gateway/README.md','Gateway/service/languard-gateway.service','Gateway/service/languard-gateway-avahi.service','LICENSE']:
         archive.add(root/source,arcname=source)
-(out/'gateway/SHA256SUMS').write_text(hashlib.sha256(gateway_archive.read_bytes()).hexdigest()+'  '+gateway_archive.name+'\n')
+(out/'gateway/SHA256SUMS').write_text(''.join(hashlib.sha256(bundle.read_bytes()).hexdigest()+'  '+bundle.name+'\n' for bundle in sorted((out/'gateway').glob('*.tar.gz'))))
 if (root/'build/gateway-lab-results.json').exists():
     shutil.copy2(root/'build/gateway-lab-results.json',out/'gateway-lab-results.json')
 (out/'Packages').write_text('\n'.join(entries)+'\n')
