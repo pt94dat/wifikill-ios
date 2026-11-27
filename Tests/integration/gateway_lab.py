@@ -20,7 +20,10 @@ RESULTS=[]
 
 
 def run(args,*,check=True,**kwargs):
-    return subprocess.run(args,check=check,capture_output=True,text=True,timeout=15,**kwargs)
+    result=subprocess.run(args,check=False,capture_output=True,text=True,timeout=15,**kwargs)
+    if check and result.returncode:
+        raise RuntimeError('Lab command failed: '+args[0]+' '+result.stderr[-2000:])
+    return result
 
 
 def ns(name,args,**kwargs):
@@ -79,7 +82,7 @@ def main():
         link(TARGET,'lt0','02:00:00:00:00:04','192.0.2.10/24','2001:db8:1::10/64')
         link(ADMIN,'la0','02:00:00:00:00:03','192.0.2.20/24','2001:db8:1::20/64')
         link(WAN,'wan0','02:00:00:00:00:05','198.51.100.2/24','2001:db8:2::2/64')
-        ns(GW,['nft','-f','-'],input='table inet unrelated_test { chain forward { type filter hook forward priority 0; policy accept; counter } }\n')
+        ns(GW,['nft','-f','-'],input='table inet unrelated_test { chain forward { type filter hook forward priority 0; policy accept; counter; } }\n')
         (directory/'index.html').write_text('languard-lab-ok')
         server=subprocess.Popen(['ip','netns','exec',WAN,sys.executable,'-m','http.server','18080','--bind','::','--directory',str(directory)],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         PROCESSES.append(server)
