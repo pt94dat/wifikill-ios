@@ -19,7 +19,7 @@
 #include <dns_sd.h>
 #include "LGIdentity.h"
 static size_t aligned(size_t n) { return n ? (n+3)&~(size_t)3 : 4; }
-static void routes(LGNetwork *net, const char *ip, char *mac, size_t cap) {
+static void routes(LGNetwork *net) {
  int mib[]={CTL_NET,PF_ROUTE,0,AF_INET,NET_RT_DUMP,0}; size_t size=0;
  if(sysctl(mib,6,NULL,&size,NULL,0)<0 || !size || size>16*1024*1024)return;
  char *buf=malloc(size); if(!buf)return;
@@ -34,16 +34,9 @@ static void routes(LGNetwork *net, const char *ip, char *mac, size_t cap) {
    if(s+len>p+r->length)break;
    a[i]=sa;s+=len;
   }
-  if(net && a[LGRouteDestination] && a[LGRouteGateway] && a[LGRouteDestination]->sa_family==AF_INET && a[LGRouteGateway]->sa_family==AF_INET && (r->flags&LGRouteGatewayFlag) && r->index==if_nametoindex(net->interface)){
+  if(net && a[LGRouteDestination] && a[LGRouteGateway] && a[LGRouteDestination]->sa_family==AF_INET && a[LGRouteDestination]->sa_len>=sizeof(struct sockaddr_in) && a[LGRouteGateway]->sa_family==AF_INET && a[LGRouteGateway]->sa_len>=sizeof(struct sockaddr_in) && (r->flags&LGRouteGatewayFlag) && r->index==if_nametoindex(net->interface)){
    struct sockaddr_in *dst=(void*)a[LGRouteDestination], *gw=(void*)a[LGRouteGateway];
    if(dst->sin_addr.s_addr==0)inet_ntop(AF_INET,&gw->sin_addr,net->gateway,sizeof(net->gateway));
-  }
-  if(ip && mac && a[LGRouteDestination] && a[LGRouteGateway] && a[LGRouteDestination]->sa_family==AF_INET && a[LGRouteGateway]->sa_family==AF_LINK){
-   char addr[16];struct sockaddr_in *dst=(void*)a[LGRouteDestination];inet_ntop(AF_INET,&dst->sin_addr,addr,sizeof(addr));
-   struct sockaddr_dl *dl=(void*)a[LGRouteGateway];
-   if(!strcmp(addr,ip)&&dl->sdl_alen==6 && offsetof(struct sockaddr_dl,sdl_data)+dl->sdl_nlen+6<=dl->sdl_len){
-    unsigned char *b=(void*)LLADDR(dl);snprintf(mac,cap,"%02x:%02x:%02x:%02x:%02x:%02x",b[0],b[1],b[2],b[3],b[4],b[5]);
-   }
   }
   p+=r->length;
  }
@@ -65,24 +58,29 @@ int lg_network(LGNetwork *out){
   strlcpy(candidate.interface,p->ifa_name,sizeof(candidate.interface));
   inet_ntop(AF_INET,&a->sin_addr,candidate.ip,sizeof(candidate.ip));inet_ntop(AF_INET,&m->sin_addr,candidate.mask,sizeof(candidate.mask));
   candidate.address=ntohl(a->sin_addr.s_addr);candidate.netmask=ntohl(m->sin_addr.s_addr);
-  routes(&candidate,NULL,NULL,0);if(!out->address||candidate.gateway[0])*out=candidate;
+  routes(&candidate);if(!out->address||candidate.gateway[0])*out=candidate;
   if(candidate.gateway[0])break;
  }
  freeifaddrs(all);return out->address?0:-1;
 }
-int lg_mac(const char *ip,char *out,size_t size){if(size<18)return -1;char raw[32]={0};routes(NULL,ip,raw,sizeof(raw));return lg_normalize_mac(raw,out)?0:-1;}
+
 static double clock_ms(void){struct timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec*1000.0+t.tv_nsec/1e6;}
-int lg_probe(const char *ip,unsigned timeout_ms,double *latency_ms){
+int lg_probe_detail(const char *ip,unsigned timeout_ms,double *latency_ms,int *evidence){
+ if(evidence)*evidence=0;
  struct sockaddr_in a={0};a.sin_len=sizeof(a);a.sin_family=AF_INET;a.sin_port=htons(443);
  if(inet_pton(AF_INET,ip,&a.sin_addr)!=1)return 0;
  int fd=socket(AF_INET,SOCK_STREAM,0);if(fd<0)return 0;
- fcntl(fd,F_SETFL,O_NONBLOCK);double start=clock_ms();int rc=connect(fd,(void*)&a,sizeof(a));int reachable=rc==0;
- if(rc<0 && errno==EINPROGRESS){struct pollfd p={fd,POLLOUT,0};if(poll(&p,1,(int)timeout_ms)>0){int e=0;socklen_t len=sizeof(e);if(!getsockopt(fd,SOL_SOCKET,SO_ERROR,&e,&len))reachable=e==0||e==ECONNREFUSED;}}
- if(latency_ms)*latency_ms=clock_ms()-start;close(fd);return reachable;
+ fcntl(fd,F_SETFL,O_NONBLOCK);double start=clock_ms();int rc=connect(fd,(void*)&a,sizeof(a));int reachable=rc==0;int kind=rc==0?1:0;if(rc<0&&errno==ECONNREFUSED){reachable=1;kind=2;}
+ if(rc<0 && errno==EINPROGRESS){struct pollfd p={fd,POLLOUT,0};if(poll(&p,1,(int)timeout_ms)>0){int e=0;socklen_t len=sizeof(e);if(!getsockopt(fd,SOL_SOCKET,SO_ERROR,&e,&len))reachable=e==0||e==ECONNREFUSED;kind=e==0?1:(e==ECONNREFUSED?2:0);}}
+ if(latency_ms)*latency_ms=clock_ms()-start;if(evidence)*evidence=kind;close(fd);return reachable;
 }
 
-size_t lg_neighbors(const LGNetwork *net,LGNeighbor *out,size_t capacity,unsigned *rejected){
- if(rejected)*rejected=0;int mib[]={CTL_NET,PF_ROUTE,0,AF_INET,NET_RT_DUMP,0};size_t length=0,count=0;
+int lg_probe(const char *ip,unsigned timeout_ms,double *latency_ms){return lg_probe_detail(ip,timeout_ms,latency_ms,NULL);}
+
+static int neighbor_view=0;
+int lg_neighbor_view_status(void){return neighbor_view;}
+static size_t neighbor_snapshot(const LGNetwork *net,LGNeighbor *out,size_t capacity,unsigned *rejected,int mode){
+ if(rejected)*rejected=0;int mib[]={CTL_NET,PF_ROUTE,0,AF_INET,mode,mode==10?0x400:0};size_t length=0,count=0;
  if(sysctl(mib,6,NULL,&length,NULL,0)||!length||length>16*1024*1024)return 0;
  unsigned char *buffer=malloc(length);if(!buffer)return 0;
  if(sysctl(mib,6,buffer,&length,NULL,0)){free(buffer);return 0;}
@@ -102,6 +100,13 @@ size_t lg_neighbors(const LGNetwork *net,LGNeighbor *out,size_t capacity,unsigne
    }
   }p+=header.length;
  }free(buffer);return count;
+}
+size_t lg_neighbors(const LGNetwork *net,LGNeighbor *out,size_t capacity,unsigned *rejected){
+ // XNU exposes NET_RT_FLAGS_PRIV=10 for already-authorized neighbor-cache readers.
+ // This requests a read-only view; it neither grants an entitlement nor changes OS policy.
+ unsigned hidden=0;size_t count=neighbor_snapshot(net,out,capacity,&hidden,10);
+ if(count){neighbor_view=1;if(rejected)*rejected=hidden;return count;}
+ count=neighbor_snapshot(net,out,capacity,&hidden,NET_RT_DUMP);neighbor_view=count?0:(hidden?2:3);if(rejected)*rejected=hidden;return count;
 }
 typedef struct{char *out;size_t capacity;int finished;} LGNameResult;
 static void name_reply(DNSServiceRef ref,DNSServiceFlags flags,uint32_t index,DNSServiceErrorType error,const char *name,uint16_t type,uint16_t cls,uint16_t length,const void *data,uint32_t ttl,void *context){

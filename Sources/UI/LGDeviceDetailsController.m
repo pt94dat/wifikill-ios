@@ -1,0 +1,25 @@
+#import "LGDeviceDetailsController.h"
+#import "DesignSystem/LGStyle.h"
+#include <stdlib.h>
+@implementation LGDeviceDetailsController
+- (void)viewDidLoad{[super viewDidLoad];self.title=@"Device details";self.tableView.backgroundColor=LGStyle.background;self.tableView.separatorColor=LGStyle.surface;self.tableView.rowHeight=UITableViewAutomaticDimension;self.tableView.estimatedRowHeight=70;self.tableView.keyboardDismissMode=UIScrollViewKeyboardDismissModeOnDrag;}
+- (NSString*)date:(NSDate*)date{if(!date)return @"Not observed";NSDateFormatter *f=[NSDateFormatter new];f.dateStyle=NSDateFormatterMediumStyle;f.timeStyle=NSDateFormatterMediumStyle;return [f stringFromDate:date];}
+- (NSArray*)rows{LGDevice *d=self.device;NSString *manufacturer=@"Unknown — no vendor database claim";if(d.mac.length&&(strtoul(d.mac.UTF8String,NULL,16)&2))manufacturer=@"Locally administered / private MAC — vendor not inferred";
+ return @[
+ @[@[@"Name",d.displayName],@[@"Rename",@"User label; address-only labels expire after 15 minutes"],@[@"Favorite",d.favorite?@"Yes — tap to remove":@"No — tap to add"],@[@"Protection",d.systemProtected?@"System protected":(d.protectedDevice?@"Protected — tap to remove":@"Not protected — tap to protect")]],
+ @[@[@"Address",d.ip],@[@"MAC",d.mac.length?d.mac:@"Unavailable"],@[@"MAC evidence",d.identitySource],@[@"DNS name",d.hostname.length?d.hostname:@"Unavailable"],@[@"Bonjour name",d.bonjourName.length?d.bonjourName:@"Unavailable"],@[@"Service evidence",d.serviceEvidence.length?d.serviceEvidence:@"None observed"],@[@"Category hint",d.typeHint],@[@"Manufacturer",manufacturer]],
+ @[@[@"Local reachability",d.connectivityText],@[@"Probe evidence",d.probeEvidence==1?@"TCP handshake accepted":(d.probeEvidence==2?@"TCP refusal — may originate from an intermediary":(d.probeEvidence==3?@"Local phone interface":@"No response verified"))],@[@"Last response",[self date:d.lastSeen]],@[@"Internet connectivity",@"Not independently verified"]],
+ @[@[@"Management capability",self.authorizationStatus?:@"Not configured"],@[@"Control",d.controlText],@[@"Router rule readback",d.restrictionKnown?(d.routerRulePresent?@"Rule present":@"Rule absent"):@"Unverified / not checked"],@[@"Rule checked",[self date:d.ruleCheckedAt]],@[@"Operation evidence",d.operationError.length?d.operationError:@"No request submitted"]]
+ ];}
+- (NSInteger)numberOfSectionsInTableView:(UITableView*)tableView{(void)tableView;return 4;}
+- (NSInteger)tableView:(UITableView*)tableView numberOfRowsInSection:(NSInteger)section{(void)tableView;return [[self rows][section] count];}
+- (NSString*)tableView:(UITableView*)tableView titleForHeaderInSection:(NSInteger)section{(void)tableView;return @[@"Your labels",@"Identity evidence",@"Connectivity",@"Authorized management"][section];}
+- (UITableViewCell*)tableView:(UITableView*)tableView cellForRowAtIndexPath:(NSIndexPath*)index{(void)tableView;UITableViewCell *cell=[[UITableViewCell alloc]initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:nil];NSArray *row=[self rows][index.section][index.row];cell.textLabel.text=row[0];cell.textLabel.font=[UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];cell.textLabel.textColor=LGStyle.muted;cell.detailTextLabel.text=row[1];cell.detailTextLabel.font=[UIFont systemFontOfSize:15];cell.detailTextLabel.textColor=UIColor.whiteColor;cell.detailTextLabel.numberOfLines=0;cell.backgroundColor=LGStyle.surface;cell.selectionStyle=index.section==0&&index.row>0?UITableViewCellSelectionStyleDefault:UITableViewCellSelectionStyleNone;return cell;}
+- (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)index{
+ [tableView deselectRowAtIndexPath:index animated:YES];LGDevice *d=self.device;if(index.section!=0)return;
+ if(index.row==1){UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Custom label" message:@"A label is not proof of device identity." preferredStyle:1];[a addTextFieldWithConfigurationHandler:^(UITextField *field){field.text=d.name;field.placeholder=@"Optional name";}];[a addAction:[UIAlertAction actionWithTitle:@"Save" style:0 handler:^(UIAlertAction *action){(void)action;d.name=[a.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];[self changed];}]];[a addAction:[UIAlertAction actionWithTitle:@"Cancel" style:1 handler:nil]];[self presentViewController:a animated:YES completion:nil];}
+ else if(index.row==2){d.favorite=!d.favorite;[self changed];}
+ else if(index.row==3&&!d.systemProtected&&!d.pending&&!d.restricted){d.protectedDevice=!d.protectedDevice;[self changed];}
+}
+- (void)changed{if(self.onChange)self.onChange(self.device);[self.tableView reloadData];}
+@end

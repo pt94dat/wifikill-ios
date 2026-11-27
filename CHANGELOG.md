@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0-beta.1 — 2026-11-27
+
+- Native scrollable identity and authorization screens; control state separated from TCP responses.
+- Bounded Bonjour/NetBIOS evidence and read-only neighbor capability telemetry; no fabricated vendor or identity.
+- Network-scoped preferences with expiring address-only labels.
+- Gateway installer, optional Avahi advertisement, bounded TLS workers and graceful rule cleanup.
+- Real isolated IPv4/IPv6 enforcement/recovery CI gate, CodeDirectory page verification and exact published-source checks.
+- See ENGINEERING_AUDIT for evidence boundaries; physical iOS 12 acceptance remains pending.
+
 ## 0.2.0-beta.1 — 2026-11-27
 
 - Reject redacted, zero, broadcast, multicast and malformed MACs without rejecting valid locally administered addresses.

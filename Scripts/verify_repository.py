@@ -3,6 +3,7 @@ import gzip
 import hashlib
 import json
 import sys
+import os
 import urllib.request
 from pathlib import Path
 
@@ -27,6 +28,18 @@ for paragraph in packages.decode().strip().split('\n\n'):
     assert hashlib.sha256(data).hexdigest()==fields['SHA256']
     assert data.startswith(b'!<arch>\n')
 metadata=json.loads(read('release.json'))
-assert read(metadata['package'])
+current_data=read(metadata['package'])
+assert hashlib.sha256(current_data).hexdigest()==metadata['sha256']
+expected_version=os.environ.get('EXPECTED_VERSION')
+expected_commit=os.environ.get('EXPECTED_COMMIT')
+if expected_version:
+    assert metadata['version']==expected_version,metadata
+if expected_commit:
+    assert metadata['source_commit']==expected_commit,metadata
+if metadata.get('gateway_bundle'):
+    gateway_data=read(metadata['gateway_bundle'])
+    sums=read('gateway/SHA256SUMS').decode()
+    assert hashlib.sha256(gateway_data).hexdigest() in sums
+print('VERIFIED_RELEASE_METADATA',json.dumps(metadata,sort_keys=True))
 assert read('index.html') and read('icon.png')
 print('Repository files, compression, sizes, architecture and SHA-256 verified. Physical Sileo installation pending.')

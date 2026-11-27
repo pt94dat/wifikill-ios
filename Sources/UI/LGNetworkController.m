@@ -1,5 +1,7 @@
 #import "LGNetworkController.h"
 #import "LGDeviceCell.h"
+#import "LGDeviceDetailsController.h"
+#import "LGAuthorizationController.h"
 #import "DesignSystem/LGStyle.h"
 #import "Network/LGScanner.h"
 #import "Network/LGIdentity.h"
@@ -35,6 +37,8 @@
  self.toolbarItems=@[[[UIBarButtonItem alloc]initWithTitle:@"Network" style:0 target:self action:@selector(networkDetails)],[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],[[UIBarButtonItem alloc]initWithTitle:@"History" style:0 target:self action:@selector(history)],[[UIBarButtonItem alloc]initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:nil],self.restoreButton];self.navigationController.toolbarHidden=NO;
  [self buildHeader];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(background) name:UIApplicationDidEnterBackgroundNotification object:nil];[NSNotificationCenter.defaultCenter addObserver:self selector:@selector(foreground) name:UIApplicationDidBecomeActiveNotification object:nil];[self updateContext];[self scan];[self.gateway discover];
 }
+- (void)viewDidAppear:(BOOL)animated{[super viewDidAppear:animated];[self foreground];}
+- (void)viewWillDisappear:(BOOL)animated{[super viewWillDisappear:animated];[self.refreshTimer invalidate];self.refreshTimer=nil;[self.scanner cancel];self.scanning=NO;[self.activity stopAnimating];[self.refreshControl endRefreshing];self.navigationItem.leftBarButtonItem.title=@"Scan";}
 - (UILabel*)label:(CGFloat)size color:(UIColor*)color{UILabel *v=[UILabel new];v.font=[UIFont systemFontOfSize:size weight:UIFontWeightMedium];v.textColor=color;return v;}
 - (void)buildHeader{
  UIView *header=[[UIView alloc]initWithFrame:CGRectMake(0,0,self.view.bounds.size.width,222)];
@@ -60,7 +64,7 @@
 }
 - (BOOL)contextIsCurrent{LGNetworkContext *now=[LGNetworkContext current];return now&&[now.fingerprint isEqual:self.context.fingerprint];}
 - (void)background{[self.scanner cancel];self.scanning=NO;[self.activity stopAnimating];[self.refreshControl endRefreshing];self.navigationItem.leftBarButtonItem.title=@"Scan";[self.gateway invalidate:@"Paused; authorization will be rechecked"];for(LGDevice *d in self.devices)d.restrictionKnown=NO;[self.refreshTimer invalidate];self.refreshTimer=nil;}
-- (void)foreground{if(!self.refreshTimer)self.refreshTimer=[NSTimer scheduledTimerWithTimeInterval:15 target:self selector:@selector(tick) userInfo:nil repeats:YES];[self tick];}
+- (void)foreground{if(self.navigationController.topViewController!=self)return;if(!self.refreshTimer)self.refreshTimer=[NSTimer scheduledTimerWithTimeInterval:15 target:self selector:@selector(tick) userInfo:nil repeats:YES];[self tick];}
 - (void)tick{
  BOOL changed=[self updateContext];[self render];if(self.pending.count||self.restoringAll)return;
  if(!self.scanning){if(changed||!self.lastScan||-[self.lastScan timeIntervalSinceNow]>45)[self scan];else [self.gateway detect:^(NSString *status){(void)status;[self refreshAdapter];}];}
@@ -76,17 +80,19 @@
   if(self.context)[self.gateway detect:^(NSString *status){(void)status;[self refreshAdapter];}];
  }];
 }
-- (void)loadPreferences:(LGDevice*)d{
- NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;NSDictionary *prefs=nil;
- if(d.mac.length)prefs=[defaults dictionaryForKey:[@"device:" stringByAppendingString:d.mac]];
- if(!prefs)prefs=[defaults dictionaryForKey:[@"device.v2:" stringByAppendingString:d.identityKey]];
- if(!prefs&&self.context){LGNetwork n=self.context.network;NSString *old=[NSString stringWithFormat:@"device:%s|%s|%s:%@",n.ip,n.mask,n.gateway,d.ip];prefs=[defaults dictionaryForKey:old];}
+- (NSString*)preferenceKey:(LGDevice*)d {
+ NSString *network=self.context.networkKey?:@"unknown";return d.mac.length&&!d.macSelfReported?[NSString stringWithFormat:@"device.v3:%@:mac:%@",network,d.mac]:[NSString stringWithFormat:@"device.v3:%@:address:%@",network,d.ip];
+}
+- (void)loadPreferences:(LGDevice*)d {
+ NSUserDefaults *defaults=NSUserDefaults.standardUserDefaults;NSString *key=[self preferenceKey:d];NSDictionary *prefs=[defaults dictionaryForKey:key];
+ if(!prefs&&d.mac.length&&!d.macSelfReported){prefs=[defaults dictionaryForKey:[@"device:" stringByAppendingString:d.mac]];if(prefs)[defaults setObject:prefs forKey:key];}
+ if(!prefs){NSDictionary *old=[defaults dictionaryForKey:[@"device.v2:" stringByAppendingString:d.identityKey]];if(old){NSMutableDictionary *migrated=[old mutableCopy];migrated[@"expires"]=@(NSDate.date.timeIntervalSince1970+900);prefs=migrated;[defaults setObject:prefs forKey:key];}}
+ if(prefs[@"expires"]&&[prefs[@"expires"] doubleValue]<NSDate.date.timeIntervalSince1970)prefs=nil;
  if([prefs[@"mac"] isKindOfClass:NSString.class]&&[prefs[@"mac"] length]&&d.mac.length&&![prefs[@"mac"] isEqual:d.mac])prefs=nil;
  if([prefs[@"name"] isKindOfClass:NSString.class])d.name=prefs[@"name"];d.favorite=[prefs[@"favorite"] boolValue];d.protectedDevice=d.systemProtected||[prefs[@"protected"] boolValue];
 }
-- (void)savePreferences:(LGDevice*)d{
- NSDictionary *prefs=@{@"name":d.name?:@"",@"favorite":@(d.favorite),@"protected":@(d.protectedDevice),@"mac":d.mac?:@""};
- [NSUserDefaults.standardUserDefaults setObject:prefs forKey:[@"device.v2:" stringByAppendingString:d.identityKey]];if(d.mac.length)[NSUserDefaults.standardUserDefaults setObject:prefs forKey:[@"device:" stringByAppendingString:d.mac]];[self filterChanged];
+- (void)savePreferences:(LGDevice*)d {
+ NSMutableDictionary *prefs=[@{@"name":d.name?:@"",@"favorite":@(d.favorite),@"protected":@(d.protectedDevice),@"mac":d.mac?:@""} mutableCopy];if(!d.mac.length||d.macSelfReported)prefs[@"expires"]=@(NSDate.date.timeIntervalSince1970+900);[NSUserDefaults.standardUserDefaults setObject:prefs forKey:[self preferenceKey:d]];[self filterChanged];
 }
 - (void)refreshAdapter{
  NSUInteger epoch=self.contextEpoch;NSString *endpoint=self.gateway.endpoint;
@@ -95,7 +101,7 @@
   if(epoch!=self.contextEpoch||![endpoint isEqual:self.gateway.endpoint]||![self contextIsCurrent])return;
   if(!error&&[r[@"devices"] isKindOfClass:NSArray.class]){NSMutableDictionary *mapping=[NSMutableDictionary new];NSMutableSet *conflicts=[NSMutableSet new];
    for(id row in r[@"devices"]){if(![row isKindOfClass:NSDictionary.class]||![row[@"dst"] isKindOfClass:NSString.class]||![row[@"lladdr"] isKindOfClass:NSString.class])continue;char mac[18];if(!lg_normalize_mac([row[@"lladdr"] UTF8String],mac))continue;NSString *ip=row[@"dst"];if(mapping[ip]&&![mapping[ip] isEqual:@(mac)])[conflicts addObject:ip];mapping[ip]=@(mac);}
-   for(LGDevice *d in self.devices)if(mapping[d.ip]&&![conflicts containsObject:d.ip]){d.mac=mapping[d.ip];d.identitySource=@"Authenticated gateway neighbor cache";[self loadPreferences:d];}
+   for(LGDevice *d in self.devices)if(mapping[d.ip]&&![conflicts containsObject:d.ip]){d.mac=mapping[d.ip];d.identitySource=@"Authenticated gateway neighbor cache";d.macSelfReported=NO;[self loadPreferences:d];}
   }[self refreshRestrictions];
  }];
 }
@@ -145,36 +151,16 @@
 - (void)showText:(NSString*)text title:(NSString*)title{
  UIViewController *v=[UIViewController new];v.title=title;UITextView *view=[[UITextView alloc]initWithFrame:self.view.bounds];view.autoresizingMask=UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;view.backgroundColor=LGStyle.background;view.textColor=UIColor.whiteColor;view.font=[UIFont systemFontOfSize:15];view.textContainerInset=UIEdgeInsetsMake(20,20,24,20);view.editable=NO;view.text=text;v.view=view;[self.navigationController pushViewController:v animated:YES];
 }
-- (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)index{
- [tableView deselectRowAtIndexPath:index animated:YES];LGDevice *d=self.visible[index.row];
- NSString *availability=d.protectedDevice?@"Device is protected":(!d.mac.length?@"MAC unavailable: no safe device-control identifier":self.gateway.authorizationStatus);
- NSString *details=[NSString stringWithFormat:@"IP: %@\nMAC: %@\nIdentity: %@\nDNS: %@ (network-reported)\nManufacturer / type: unavailable\nLocal state: %@\nControl: %@\nLast response: %@\nRule checked: %@\n%@\n%@",d.ip,d.mac.length?d.mac:@"Unavailable",d.identitySource,d.hostname.length?d.hostname:@"Unavailable",d.connectivityText,d.status,d.lastSeen?:@"Never verified",d.ruleCheckedAt?:@"Not checked",availability,d.operationError];
- UIAlertController *a=[UIAlertController alertControllerWithTitle:d.displayName message:details preferredStyle:1];[a addTextFieldWithConfigurationHandler:^(UITextField *field){field.placeholder=@"Custom name";field.text=d.name;}];
- [a addAction:[UIAlertAction actionWithTitle:@"Save name" style:0 handler:^(UIAlertAction *action){(void)action;d.name=[a.textFields.firstObject.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];[self savePreferences:d];}]];
- [a addAction:[UIAlertAction actionWithTitle:d.favorite?@"Remove favorite":@"Favorite" style:0 handler:^(UIAlertAction *action){(void)action;d.favorite=!d.favorite;[self savePreferences:d];}]];
- if(!d.systemProtected&&!d.restricted&&!d.pending)[a addAction:[UIAlertAction actionWithTitle:d.protectedDevice?@"Remove protection":@"Protect device" style:0 handler:^(UIAlertAction *action){(void)action;d.protectedDevice=!d.protectedDevice;[self savePreferences:d];}]];
- [a addAction:[UIAlertAction actionWithTitle:@"Close" style:1 handler:nil]];[self presentViewController:a animated:YES completion:nil];
+- (void)tableView:(UITableView*)tableView didSelectRowAtIndexPath:(NSIndexPath*)index {
+ [tableView deselectRowAtIndexPath:index animated:YES];LGDeviceDetailsController *details=[[LGDeviceDetailsController alloc]initWithStyle:UITableViewStyleGrouped];details.device=self.visible[index.row];details.authorizationStatus=self.gateway.authorizationStatus;__weak typeof(self) weakSelf=self;details.onChange=^(LGDevice *device){[weakSelf savePreferences:device];};[self.navigationController pushViewController:details animated:YES];
 }
-- (void)settings{
- if(self.pending.count||self.restoringAll){[self message:@"Operation pending" text:@"Finish the gateway request before changing authorization."];return;}
- [self updateContext];NSString *candidate=self.gateway.candidates.firstObject;NSString *info=[NSString stringWithFormat:@"%@\n\nA compatible authenticated adapter is required for Kill. Discovery is independent. HTTPS trust and an enrolled token are required. Rules expire after five minutes. Router readback does not prove Internet access.\n\n%@",self.gateway.authorizationStatus,candidate?[NSString stringWithFormat:@"Unverified advertised suggestion: %@",candidate]:@"No compatible service advertised. Enter a known authorized endpoint if available."];
- UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Network authorization" message:info preferredStyle:1];
- [a addTextFieldWithConfigurationHandler:^(UITextField *field){field.placeholder=@"https://gateway-name:8443";field.text=self.gateway.endpoint.length?self.gateway.endpoint:candidate;field.keyboardType=UIKeyboardTypeURL;field.autocapitalizationType=UITextAutocapitalizationTypeNone;field.autocorrectionType=UITextAutocorrectionTypeNo;}];
- [a addTextFieldWithConfigurationHandler:^(UITextField *field){field.placeholder=@"Token · blank keeps this endpoint’s token";field.secureTextEntry=YES;field.autocapitalizationType=UITextAutocapitalizationTypeNone;field.autocorrectionType=UITextAutocorrectionTypeNo;}];
- [a addAction:[UIAlertAction actionWithTitle:@"Save & authorize this network" style:0 handler:^(UIAlertAction *action){(void)action;
-  NSString *endpoint=[LGGateway canonicalEndpoint:a.textFields[0].text];if(!endpoint||!self.context){[self message:@"Not saved" text:@"Use an HTTPS origin without credentials, query or path while connected to Wi-Fi."];return;}
-  NSString *token=a.textFields[1].text,*existing=[LGStore tokenForEndpoint:endpoint];if(!token.length&&!existing.length){[self message:@"Token required" text:@"No saved token exists for this endpoint. Credentials are never reused across different endpoints."];return;}
-  if(token.length&&![LGStore setToken:token endpoint:endpoint]){[self message:@"Not saved" text:@"Keychain rejected authorization storage."];return;}
-  [self.gateway invalidate:@"Authorization changed"];self.contextEpoch++;self.gateway.endpoint=endpoint;self.gateway.networkKey=self.context.networkKey;[NSUserDefaults.standardUserDefaults setObject:endpoint forKey:@"endpoint"];[self.gateway bindCurrentNetwork];
-  [self.gateway detect:^(NSString *status){[self message:@"Adapter result" text:status];[self refreshAdapter];}];[self render];
- }]];
- [a addAction:[UIAlertAction actionWithTitle:@"Find advertised adapters" style:0 handler:^(UIAlertAction *action){(void)action;[self.gateway discover];[self message:@"Searching local services" text:@"Open Settings again after five seconds. Advertisements are untrusted suggestions; no token is sent automatically."];}]];
- [a addAction:[UIAlertAction actionWithTitle:@"Forget this authorization" style:2 handler:^(UIAlertAction *action){(void)action;[LGStore setToken:@"" endpoint:self.gateway.endpoint];[LGStore setToken:@""];[self.gateway invalidate:@"Authorization removed; existing leases expire on the gateway"];for(LGDevice *d in self.devices)d.restrictionKnown=NO;[self render];}]];
- [a addAction:[UIAlertAction actionWithTitle:@"Cancel" style:1 handler:nil]];[self presentViewController:a animated:YES completion:nil];
+- (void)settings {
+ if(self.pending.count||self.restoringAll){[self message:@"Operation pending" text:@"Finish gateway verification before changing authorization."];return;}
+ [self updateContext];LGAuthorizationController *form=[[LGAuthorizationController alloc]initWithStyle:UITableViewStyleGrouped];form.gateway=self.gateway;form.expectedNetwork=self.context.networkKey;__weak typeof(self) weakSelf=self;form.onChange=^{weakSelf.contextEpoch++;for(LGDevice *d in weakSelf.devices)d.restrictionKnown=NO;[weakSelf refreshAdapter];[weakSelf render];};[self.navigationController pushViewController:form animated:YES];
 }
 - (void)networkDetails{
  LGNetworkContext *context=[LGNetworkContext current];if(!context){[self message:@"Disconnected" text:@"Local Wi-Fi IPv4 is unavailable."];return;}LGNetwork n=context.network;
- NSString *text=[NSString stringWithFormat:@"NETWORK\n%@\nInterface: %s\nThis iPhone: %s\nMask: %s\nGateway: %s\nSSID: %@\n\nDISCOVERY EVIDENCE\n%@\nScan budget: %@ addresses; 12 concurrent TCP/443 probes; 300 ms each. PTR lookups use the system DNS service with a 200 ms budget.\nExcluded invalid neighbor identifiers: %@\n\nCOUNT DEFINITIONS\nResponded = TCP connection or refusal, plus this iPhone. This is address response evidence, not authenticated physical identity. Cached = valid current neighbor with no TCP response. Unknown = a previously responding address not verified now. Categories are mutually exclusive. DHCP may reassign historical addresses.\n\nACCESS CONTROL\n%@\nEndpoint: %@\nRecovery records: %lu\nOnly router rule presence/removal is verified. Target Internet access requires an independent client test.\n\nAPP\nLanGuard 0.2.0-beta.1",context.title,n.interface,n.ip,n.mask,n.gateway,context.ssid.length?context.ssid:@"Unavailable under current OS permissions",self.scanExplanation,self.scanner.metrics[@"probed"]?:@0,self.scanner.metrics[@"rejectedNeighbors"]?:@0,self.gateway.authorizationStatus,self.gateway.endpoint.length?self.gateway.endpoint:@"Not configured",(unsigned long)LGStore.journal.count];
+ NSString *text=[NSString stringWithFormat:@"NETWORK\n%@\nInterface: %s\nThis iPhone: %s\nMask: %s\nGateway: %s\nSSID: %@\n\nDISCOVERY EVIDENCE\n%@\nScan budget: %@ addresses; 12 concurrent TCP/443 probes; 300 ms each. PTR lookup budget: 400 ms; directed NetBIOS: 150 ms; Bonjour collection: 1.5 seconds. Network-reported clues are not authenticated identity.\nExcluded invalid neighbor identifiers: %@\n\nCOUNT DEFINITIONS\nResponded = TCP connection or refusal, plus this iPhone. This is address response evidence, not authenticated physical identity. Cached = valid current neighbor with no TCP response. Unknown = a previously responding address not verified now. Categories are mutually exclusive. DHCP may reassign historical addresses.\n\nACCESS CONTROL\n%@\nEndpoint: %@\nRecovery records: %lu\nOnly router rule presence/removal is verified. Target Internet access requires an independent client test.\n\nAPP\nLanGuard 0.3.0-beta.1",context.title,n.interface,n.ip,n.mask,n.gateway,context.ssid.length?context.ssid:@"Unavailable under current OS permissions",[self.scanExplanation stringByAppendingFormat:@"\nTCP accepted: %@ · refused: %@ · neighbor view: %@",self.scanner.metrics[@"tcpAccepted"]?:@0,self.scanner.metrics[@"tcpRefused"]?:@0,self.scanner.metrics[@"neighborView"]?:@0],self.scanner.metrics[@"probed"]?:@0,self.scanner.metrics[@"rejectedNeighbors"]?:@0,self.gateway.authorizationStatus,self.gateway.endpoint.length?self.gateway.endpoint:@"Not configured",(unsigned long)LGStore.journal.count];
  UIAlertController *a=[UIAlertController alertControllerWithTitle:@"Network & diagnostics" message:@"View network evidence or perform a gateway reachability check." preferredStyle:1];
  [a addAction:[UIAlertAction actionWithTitle:@"View details" style:0 handler:^(UIAlertAction *action){(void)action;[self showText:text title:@"Network details"];}]];
  [a addAction:[UIAlertAction actionWithTitle:@"Check gateway TCP reachability" style:0 handler:^(UIAlertAction *action){(void)action;[self diagnostics];}]];

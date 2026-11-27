@@ -1,7 +1,7 @@
 name: Build native ARM64 and publish validated APT repository
 on:
   push:
-    branches: [main]
+    branches: [main, engineering-audit]
   workflow_dispatch:
 permissions:
   contents: read
@@ -9,7 +9,21 @@ concurrency:
   group: native-release
   cancel-in-progress: false
 jobs:
+  gateway-lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Install isolated lab dependencies
+        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 curl openssl
+      - name: Run real routed IPv4 and IPv6 control and crash-recovery checks
+        run: sudo python3 Tests/integration/gateway_lab.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: isolated-gateway-lab-results
+          path: build/gateway-lab-results.json
+          if-no-files-found: error
   build:
+    needs: gateway-lab
     runs-on: macos-15
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -32,6 +46,10 @@ jobs:
         run: python3 -m unittest discover -s Tests -v
       - name: Build and ldid-sign native app
         run: gmake clean package
+      - uses: actions/download-artifact@v4
+        with:
+          name: isolated-gateway-lab-results
+          path: build
       - name: Preserve published releases
         run: python3 Scripts/retain_release.py
       - name: Validate package and generate repository
@@ -47,6 +65,7 @@ jobs:
         with:
           path: build/repository
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -65,4 +84,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Verify published HTTPS repository
+        env:
+          EXPECTED_VERSION: 0.3.0-beta.1
+          EXPECTED_COMMIT: ${{ github.sha }}
         run: python3 Scripts/verify_repository.py https://pt94dat.github.io/wifikill-ios/

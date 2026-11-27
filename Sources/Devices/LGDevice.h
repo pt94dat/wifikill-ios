@@ -2,12 +2,14 @@
 typedef NS_ENUM(NSInteger,LGReachability){LGReachabilityUnknown,LGReachabilityCached,LGReachabilityResponded,LGReachabilityHost};
 typedef NS_ENUM(NSInteger,LGControlState){LGControlNone,LGControlRestricting,LGControlRestricted,LGControlRestoring,LGControlRestored,LGControlUnverified};
 @interface LGDevice:NSObject
-@property(nonatomic,copy) NSString *ip,*mac,*name,*hostname,*identityKey,*identitySource,*operationError;
-@property(nonatomic) BOOL protectedDevice,systemProtected,favorite,neighborCached,previouslySeen,restrictionKnown,routerRulePresent,desiredRestricted,hasIntent;
+@property(nonatomic,copy) NSString *ip,*mac,*name,*hostname,*identityKey,*identitySource,*operationError,*bonjourName,*serviceEvidence,*typeHint;
+@property(nonatomic) BOOL protectedDevice,systemProtected,favorite,neighborCached,previouslySeen,restrictionKnown,routerRulePresent,desiredRestricted,hasIntent,macSelfReported;
 @property(nonatomic) LGReachability reachability;
+@property(nonatomic) NSInteger probeEvidence;
+@property(nonatomic) double latencyMS;
 @property(nonatomic) LGControlState control;
 @property(nonatomic,strong) NSDate *lastSeen,*ruleCheckedAt;
 @property(nonatomic,readonly) BOOL restricted,pending;
-@property(nonatomic,readonly) NSString *displayName,*connectivityText,*status;
+@property(nonatomic,readonly) NSString *displayName,*connectivityText,*status,*controlText;
 - (void)applyRulePresence:(BOOL)present;
 @end

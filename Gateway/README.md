@@ -10,7 +10,7 @@ This is a real Linux/nftables reference adapter, not a universal router API. It 
 4. Create a random token locally: `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`. Save it in the configured token file (mode 0600). Do not commit it or send it in chat.
 5. Supply a TLS certificate/key for a local DNS name or IP that iOS trusts. Install your own CA profile on your test iPhone if necessary. No trust bypass or plaintext mode is provided.
 6. Bind the service to the management LAN address only. Restrict TCP/8443 to the admin phone in the existing gateway firewall. Keep a local console available for recovery.
-7. Run `python3 languard_gateway.py --config /etc/languard/config.json` as the gateway administrator. Use your operating system's service manager for production supervision. No automated router installation is attempted.
+7. On a systemd Linux gateway, install prerequisites `python3`, `nftables`, `iproute2` and optionally `avahi-daemon`. Place the edited config at `/etc/languard/config.json`. From the extracted bundle run `sudo python3 Gateway/install_gateway.py --check`, then `sudo python3 Gateway/install_gateway.py`. The installer creates the token if absent, installs only the LanGuard service and starts it. Inspect `systemctl status languard-gateway` and `journalctl -u languard-gateway`. This is explicit administrator installation, not automatic modification of discovered routers.
 8. In the native app, enter the HTTPS URL and token. Capability detection uses authenticated GET `/v1/capabilities`; no router-brand assumption is involved.
 
 The service owns only `inet languard`. Its forward hook priority -100 applies before ordinary established-connection accept rules. Its MAC set uses kernel timeouts so abnormal app/server termination cannot create permanent rules. Graceful server shutdown flushes the set; server restart also restores old leases. A firewall restart may remove its table, after which API verification fails closed until service restart.
@@ -35,3 +35,11 @@ A successful result contains `router_verified: true`, **never** `end_to_end_veri
 On the gateway: `nft flush set inet languard blocked`. To remove the adapter completely, stop its service, run `nft delete table inet languard` and remove only its configured files. No unrelated firewall tables are changed.
 
 Unit tests use an explicitly labelled command double. They do not prove kernel nftables compatibility or physical Internet restriction; these require a controlled gateway and client.
+
+## Service discovery and supervision
+
+Download the [versioned gateway bundle](https://pt94dat.github.io/wifikill-ios/gateway/languard-gateway-0.3.0-beta.1.tar.gz) and compare its SHA256 against `gateway/SHA256SUMS`. The installer writes an Avahi advertisement when `/etc/avahi/services` exists. The administrator must enable Avahi separately; multicast filtering may still prevent discovery. Advertisements contain no token and are only suggestions. The hostname chosen in the app must match the trusted TLS certificate. An empty discovery list does not prove that every management method is unsupported.
+
+The service bounds concurrent TLS handshakes; an idle handshake does not block the accept loop. SIGTERM/SIGINT initiate graceful shutdown and flush only its own timed set. SIGKILL cannot run cleanup; kernel lease expiry provides bounded recovery. Production installer/systemd/Avahi behavior requires acceptance on the selected gateway. The CI namespace lab runs the actual agent and nftables, not systemd or a physical router.
+
+To uninstall: `sudo systemctl disable --now languard-gateway`; remove `/etc/systemd/system/languard-gateway.service`, `/etc/avahi/services/languard-gateway.service` if installed, and `/opt/languard-gateway`; run `sudo systemctl daemon-reload`. Remove credentials/config only when no longer needed. Delete only `inet languard` if it remains.

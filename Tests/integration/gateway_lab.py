@@ -131,6 +131,16 @@ def main():
                 raise RuntimeError('Gateway startup failed: '+(directory/'agent.log').read_text()[-3000:])
             time.sleep(.2)
         check('authenticated_tls_capabilities',status==200 and cap['management_authorized'])
+        stalled=subprocess.Popen(['ip','netns','exec',ADMIN,sys.executable,'-c',"import socket,time; s=socket.create_connection(('192.0.2.1',18443)); time.sleep(5)"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        PROCESSES.append(stalled)
+        time.sleep(.2)
+        status,_=api('GET','/v1/capabilities')
+        check('stalled_tls_handshake_does_not_block_valid_clients',status==200)
+        stalled.terminate();stalled.wait(timeout=3)
+        status,_=api('PUT','/v1/restrictions/02:00:00:00:00:04',{'ip':'192.0.2.99','seconds':30})
+        check('target_mapping_mismatch_rejected',status==400 and reachable(TARGET))
+        status,_=api('PUT','/v1/restrictions/02:00:00:00:00:00',{'ip':'192.0.2.10','seconds':30})
+        check('placeholder_target_rejected',status==400 and reachable(TARGET))
         status,_=api('PUT','/v1/restrictions/02:00:00:00:00:04',{'ip':'192.0.2.10','seconds':30},False)
         check('unauthenticated_put_rejected',status==401 and reachable(TARGET))
         status,_=api('PUT','/v1/restrictions/02:00:00:00:00:03',{'ip':'192.0.2.20','seconds':30})
@@ -147,6 +157,19 @@ def main():
         check('unkill_router_readback',status==200 and result['router_verified'] and not result['restricted'])
         check('target_ipv4_restored',reachable(TARGET))
         check('target_ipv6_restored',reachable(TARGET,True))
+        api('PUT','/v1/restrictions/02:00:00:00:00:04',{'ip':'192.0.2.10','seconds':30})
+        check('pre_shutdown_rule_active',not reachable(TARGET))
+        agent.terminate();agent.wait(timeout=5)
+        check('graceful_shutdown_restores_owned_rules',reachable(TARGET) and reachable(TARGET,True))
+        agent=subprocess.Popen(['ip','netns','exec',GW,sys.executable,str(ROOT/'Gateway/languard_gateway.py'),'--config',str(directory/'config.json')],stdout=log,stderr=log)
+        PROCESSES.append(agent)
+        deadline=time.monotonic()+8
+        while time.monotonic()<deadline:
+            status,_=api('GET','/v1/capabilities')
+            if status==200:
+                break
+            time.sleep(.2)
+        check('gateway_restart_capability_recovery',status==200)
         api('PUT','/v1/restrictions/02:00:00:00:00:04',{'ip':'192.0.2.10','seconds':30})
         check('lease_restriction_active',not reachable(TARGET))
         # SIGKILL intentionally skips graceful cleanup: the real kernel timeout must restore access.

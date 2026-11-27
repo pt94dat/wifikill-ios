@@ -1,0 +1,285 @@
+{
+  "baseline_commit": "fcf58601c5551b909ccf28ecc4453eeae769464d",
+  "files": [
+    {
+      "path": ".github/workflows/build-and-deploy.yml",
+      "bytes": 2509,
+      "sha256": "bbf81894012312944c642ff711321074994598858be8d52de211824234fbbbe3"
+    },
+    {
+      "path": ".gitignore",
+      "bytes": 55,
+      "sha256": "5993ff4312367cbd0770cd3df63d5ccb8ac93d624c9f9d83d3cbfdb418b1e10b"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "bytes": 1360,
+      "sha256": "80630c5c9e6a7d684777701a2c98a670dd7acc33b7e9545f349fcae7b4a48d62"
+    },
+    {
+      "path": "Documentation/APK_ANALYSIS.md",
+      "bytes": 300,
+      "sha256": "aefb9142abebe823e528b681047a2782618cc1f05f597cb03e726cc2c0836ee7"
+    },
+    {
+      "path": "Documentation/DEVICE_ACCEPTANCE.md",
+      "bytes": 577,
+      "sha256": "af396961fbc9cf3db17b7ce4562b04e265e1a2a269e584b778719e88cf936e6a"
+    },
+    {
+      "path": "Documentation/PHASE2.md",
+      "bytes": 4108,
+      "sha256": "cef3c5ea2bdf585c56f670f2af329652aff89652f6a7c485946408efb5ccc8d2"
+    },
+    {
+      "path": "Documentation/REQUIREMENTS.md",
+      "bytes": 3122,
+      "sha256": "5b05490077762aea0ffb6b0719e13edd2ac74320488015a3a2097646911d2b75"
+    },
+    {
+      "path": "Documentation/TRACEABILITY.md",
+      "bytes": 1086,
+      "sha256": "9c1a6bd303f8e84284185ac333eb3533cd64af62d33e214281d34538c30587d4"
+    },
+    {
+      "path": "Documentation/VERIFICATION.md",
+      "bytes": 2975,
+      "sha256": "689fbd8951e0f58e731b08bbbbc8ef26561d6fd3996fe34d10a357e863fb301c"
+    },
+    {
+      "path": "Gateway/README.md",
+      "bytes": 4234,
+      "sha256": "3363ccc4343ae6a9644b5d51b349907a487e9b810e0ca696b2769567a9ca1772"
+    },
+    {
+      "path": "Gateway/config.example.json",
+      "bytes": 286,
+      "sha256": "919dc6ab35aa3869bb41b96dfbab52c7f60327bd5a4061e412cb641a2d552048"
+    },
+    {
+      "path": "Gateway/languard_gateway.py",
+      "bytes": 11330,
+      "sha256": "247f8a5deb0abbf5b08233d52fe3d18507779600073a915d9e1e2e0da2fe5518"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1292,
+      "sha256": "4e70472d76ff58e3e8fe5e7c256361261f5859bd9aee468919f764b36e316bae"
+    },
+    {
+      "path": "Makefile",
+      "bytes": 544,
+      "sha256": "2f8f3a23363c3a9349adb98e9c58424dc26b73dca9cff96bea688346a4d3ab98"
+    },
+    {
+      "path": "README.md",
+      "bytes": 3545,
+      "sha256": "54b0e02b1cee29a966c6ca544160f3c37cec0e22980d34aa6927ce7c5ecaa1f6"
+    },
+    {
+      "path": "Resources/Icon1024.png",
+      "bytes": 9837,
+      "sha256": "894d1a6f0ff97611ef84fc4c037691f5f0e28afc1b74613ca539fd8f6741b7bf"
+    },
+    {
+      "path": "Resources/Icon60@2x.png",
+      "bytes": 779,
+      "sha256": "1accadb3b70acc7eaf8214ff80cb4bd4b4f358107e0f52d21a7617b77309cd69"
+    },
+    {
+      "path": "Resources/Icon60@3x.png",
+      "bytes": 1223,
+      "sha256": "8fe90cc60385494f12d98a626334a26732f8884736ae2fac3c794bd64f886763"
+    },
+    {
+      "path": "Resources/Info.plist",
+      "bytes": 1468,
+      "sha256": "8a22916bea3550a64d69b6d99743d11b3c5a7c4da5ed8ffd854aeb8f765b9cbe"
+    },
+    {
+      "path": "Resources/LaunchImage-667h@2x.png",
+      "bytes": 5927,
+      "sha256": "95f8bc16c5ebd6bcfa0c9cbbc6ad129f1fcd7f7bf4468543d68e216788325952"
+    },
+    {
+      "path": "Resources/entitlements.plist",
+      "bytes": 139,
+      "sha256": "f71d4652c86a1dd7f10b2f88f90b42b895d48258ef1548ddb750a2f67bffeaf5"
+    },
+    {
+      "path": "Scripts/build_repository.py",
+      "bytes": 3350,
+      "sha256": "14b9038ed191a987b2a58c791ccc57b7be85a2d19d263cf3b4fecf0b42be90cb"
+    },
+    {
+      "path": "Scripts/retain_release.py",
+      "bytes": 2093,
+      "sha256": "bee26e82d313d2546a57610f95966152b537f29fbc4e602f42aa468c27753ce4"
+    },
+    {
+      "path": "Scripts/validate_package.py",
+      "bytes": 3182,
+      "sha256": "b3ed2e89e3204353fc2a5776f916680d9f37a47e3fe830cbb8410007fad9d835"
+    },
+    {
+      "path": "Scripts/verify_repository.py",
+      "bytes": 1253,
+      "sha256": "bd5f636f98594df4cbbcd3e596d80d740d5f28e2dd7cbf88bd326e68e81764a5"
+    },
+    {
+      "path": "Sources/Application/main.m",
+      "bytes": 1008,
+      "sha256": "96720480d5ac3673397dd72da03581e06583b139446705c0cd91d73fdfefadf3"
+    },
+    {
+      "path": "Sources/DesignSystem/LGStyle.h",
+      "bytes": 177,
+      "sha256": "97da7b5ace205cb014da74da2ed2929798f25e88e94d14e3992647814f40c529"
+    },
+    {
+      "path": "Sources/DesignSystem/LGStyle.m",
+      "bytes": 542,
+      "sha256": "627ea3d746bfaef719deef75b096153343b18ed4429080c0843930062468d3b9"
+    },
+    {
+      "path": "Sources/Devices/LGDevice.h",
+      "bytes": 952,
+      "sha256": "bb8b433072afc18616ddf60b2d58afd4baf51ace940218314a893dfb1afbed89"
+    },
+    {
+      "path": "Sources/Devices/LGDevice.m",
+      "bytes": 2135,
+      "sha256": "6b9df34aa139d3c139d815194a8759ed1c4794c5d53d479ba2a7c031b0907e2e"
+    },
+    {
+      "path": "Sources/Network/LGIdentity.c",
+      "bytes": 1352,
+      "sha256": "884bc337cb6bf99cd03d0809b3cf4046f32b9ef36356d78f721261a721559a53"
+    },
+    {
+      "path": "Sources/Network/LGIdentity.h",
+      "bytes": 294,
+      "sha256": "73a85898d4838dd084db2721a183fc4ae72386efb834bf68a3193869c6365b9d"
+    },
+    {
+      "path": "Sources/Network/LGNetwork.c",
+      "bytes": 7569,
+      "sha256": "f4437da7d43f0d81bebc1c6cdfe03b3627c87194207e02f46778ee56bfd2c02b"
+    },
+    {
+      "path": "Sources/Network/LGNetwork.h",
+      "bytes": 598,
+      "sha256": "52d445d695f490e325eace7273c0102e33911b856d31e382d9b0e4bde9b82cef"
+    },
+    {
+      "path": "Sources/Network/LGNetworkContext.h",
+      "bytes": 244,
+      "sha256": "0e8bc2ccb6bab9569a71f89969219eb4b2610b13e9f98c6605e4ee8242635a49"
+    },
+    {
+      "path": "Sources/Network/LGNetworkContext.m",
+      "bytes": 1252,
+      "sha256": "03cd62a22f147d1058af3149be0c9ba9e560cea8519651b621ef4c34d2b47dd7"
+    },
+    {
+      "path": "Sources/Network/LGRouteABI.h",
+      "bytes": 734,
+      "sha256": "8b4d3503bb7f1d71f2bebdaa9ce4713194f6767c9f7259e32592e3bb28eb0f7b"
+    },
+    {
+      "path": "Sources/Network/LGScanner.h",
+      "bytes": 355,
+      "sha256": "0ff2fe36e219384b8a7a7bfe90a657465597ee671f218490fb3b02e599421db9"
+    },
+    {
+      "path": "Sources/Network/LGScanner.m",
+      "bytes": 4612,
+      "sha256": "3029406e015c58c63123182bcf3405546a6479433dd1cc2f965abc1fea6ead76"
+    },
+    {
+      "path": "Sources/RouterManagement/LGGateway.h",
+      "bytes": 730,
+      "sha256": "2e7566504acd9b8f7f4b05c85d5b0ee17da257093f304daf50e11032062ef5bb"
+    },
+    {
+      "path": "Sources/RouterManagement/LGGateway.m",
+      "bytes": 6453,
+      "sha256": "38324844fed0aeb629c491040cfb7211213cab6f340751fb1072307da1afa53b"
+    },
+    {
+      "path": "Sources/RouterManagement/LGRouterAdapter.h",
+      "bytes": 398,
+      "sha256": "dd79ed05cf474e693c0a2f1fc386179700d1231addce31659d44de5e7ab00d1b"
+    },
+    {
+      "path": "Sources/Storage/LGStore.h",
+      "bytes": 539,
+      "sha256": "755b4a7906987d65e8e47e22ef7d98c1afa1be47efcdeb2d038ab0cf75c4925d"
+    },
+    {
+      "path": "Sources/Storage/LGStore.m",
+      "bytes": 4354,
+      "sha256": "bae66763b53e6d7dd54f644019d64fa9793506a8bdf1f8fd994b624fa675bac0"
+    },
+    {
+      "path": "Sources/UI/LGDeviceCell.h",
+      "bytes": 210,
+      "sha256": "32f2cca4ee6750dcea996d0b24d7d3940913b4189dcbb672ae4d20b27430586f"
+    },
+    {
+      "path": "Sources/UI/LGDeviceCell.m",
+      "bytes": 4723,
+      "sha256": "2e823d5f341e994678ebe7832669a17ecf6f4460bb746165ddb085afa94ec079"
+    },
+    {
+      "path": "Sources/UI/LGNetworkController.h",
+      "bytes": 110,
+      "sha256": "8780ae94ca3488b26a5e0f241cddf0c4dcfdf94a99065293d1564e00c20269dc"
+    },
+    {
+      "path": "Sources/UI/LGNetworkController.m",
+      "bytes": 29510,
+      "sha256": "983de927c5772dbf612f01999ecee74183a814d6acd18f19e90c739032cdedbd"
+    },
+    {
+      "path": "Tests/identity_tests.c",
+      "bytes": 1489,
+      "sha256": "a50b27df7056a3171e391525930ef745646501c89ed8e968e83cf0208977e6d6"
+    },
+    {
+      "path": "Tests/model_tests.m",
+      "bytes": 1252,
+      "sha256": "42f7a63d8364197ae77860e92ed61be9a1dad63a42c45b6f10635148b794cd6e"
+    },
+    {
+      "path": "Tests/test_gateway.py",
+      "bytes": 7453,
+      "sha256": "1dce1c4225ff304a74f2808a46a9fd0fe8de0479791996e0d2488e46962299d6"
+    },
+    {
+      "path": "Tests/test_identity.py",
+      "bytes": 779,
+      "sha256": "c473107bb826d6467fb3ff08588eedeaffdac2c716c820981038aa2592a4872f"
+    },
+    {
+      "path": "Website/index.html",
+      "bytes": 5362,
+      "sha256": "55147c02d26b67402ad8f342f7b4cc2224874860e2d986b2cb7e3f62bc640039"
+    },
+    {
+      "path": "control",
+      "bytes": 375,
+      "sha256": "767ede9195685689211a125a2fdc7d3851487fa9e02c9353950f2dbeb2601eb5"
+    },
+    {
+      "path": "layout/DEBIAN/postinst",
+      "bytes": 103,
+      "sha256": "f099b5523a370e80704379282fbe14fb9b6a7c3597ca3601c021420ab587af8b"
+    },
+    {
+      "path": "layout/DEBIAN/postrm",
+      "bytes": 76,
+      "sha256": "a6c4666c367142ff5f0f6980e8b0f3fba5cb0a0013acca5e4c13df1b9bc0d294"
+    }
+  ]
+}
