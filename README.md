@@ -1,10 +1,16 @@
 # LanGuard — native iOS network management
 
-Current development release: **0.4.0-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
+Current development release: **0.5.0-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
 
 ## Update
 
 Refresh `https://pt94dat.github.io/wifikill-ios/` in Sileo and install the offered LanGuard upgrade. Published version/hash are generated from the actual validated package. [Release metadata](https://pt94dat.github.io/wifikill-ios/release.json) and [previous releases](https://pt94dat.github.io/wifikill-ios/releases.json).
+
+## Phase 5 functional identity enrichment
+
+[Phase 5 experiments, repairs and acceptance](Documentation/PHASE5.md). Address results are now displayed before bounded identity work finishes. Matching scanID/revisions, copied models and generation/network checks prevent late results from changing another scan. The400ms DNS mark becomes a soft threshold; useful later results can be accepted within a global3-second window with cancellation and cleanup. DNS-SD returns intermediate/negative observations without inventing NXDOMAIN.
+
+Bonjour dynamically enumerates service types, preserves multiple advertisements for one address and can add a service-only observation even without TCP443 response. Such an entry explicitly says TCP unverified and remains in Unknown; it is not a confirmed physical identity. Host/link-layer route semantics exclude non-neighbor routes. No MAC recovery or manufacturer identification on the user's network is claimed. Existing authorized management is preserved; new Kill/Unkill work is deferred.
 
 ## Phase 4 discovery reconstruction
 

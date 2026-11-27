@@ -39,7 +39,13 @@ int lg_nbns_query(const char *ip,unsigned timeout_ms,char name[64],char mac[18])
 #ifdef __APPLE__
  target.sin_len=sizeof(target);
 #endif
- target.sin_family=AF_INET;target.sin_port=htons(137);if(inet_pton(AF_INET,ip,&target.sin_addr)!=1)return 0;
+ target.sin_family=AF_INET;
+#ifdef LG_NBNS_TEST_PORT
+ target.sin_port=htons(LG_NBNS_TEST_PORT);
+#else
+ target.sin_port=htons(137);
+#endif
+if(inet_pton(AF_INET,ip,&target.sin_addr)!=1)return 0;
  int fd=socket(AF_INET,SOCK_DGRAM,0);if(fd<0)return 0;int result=0;
  if(connect(fd,(void*)&target,sizeof(target))==0){
   uint16_t id=(uint16_t)arc4random_uniform(65536);unsigned char query[50]={0};query[0]=(unsigned char)(id>>8);query[1]=(unsigned char)id;query[5]=1;query[12]=32;

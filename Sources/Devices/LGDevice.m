@@ -1,7 +1,7 @@
 #import "LGDevice.h"
 @implementation LGDevice
 - (id)copyWithZone:(NSZone*)zone{(void)zone;LGDevice *d=[LGDevice new];NSArray *keys=@[@"ip",@"mac",@"name",@"hostname",@"identityKey",@"identitySource",@"operationError",@"bonjourName",@"serviceEvidence",@"typeHint",@"dnsOutcome",@"reachability",@"probeEvidence",@"latencyMS",@"systemProtected",@"protectedDevice",@"favorite",@"neighborCached",@"previouslySeen",@"macSelfReported",@"control",@"restrictionKnown",@"routerRulePresent",@"lastSeen",@"ruleCheckedAt",@"desiredRestricted",@"hasIntent"];[d setValuesForKeysWithDictionary:[self dictionaryWithValuesForKeys:keys]];return d;}
-- (NSString*)identityConfidence{if(self.name.length&&!self.systemProtected)return @"User-defined label";if(self.bonjourName.length||self.hostname.length||self.mac.length)return @"Reported by network · unverified";return @"Unknown";}
+- (NSString*)identityConfidence{if(self.reachability==LGReachabilityHost)return @"Confirmed local interface";if(self.name.length&&!self.systemProtected)return @"User-defined label";if(self.bonjourName.length||self.hostname.length||self.mac.length)return @"Reported by network · unverified";return @"Unknown";}
 
 - (instancetype)init{if((self=[super init])){_ip=@"";_mac=@"";_name=@"";_hostname=@"";_identityKey=@"";_identitySource=@"Unavailable";_operationError=@"";_bonjourName=@"";_serviceEvidence=@"";_typeHint=@"Device type unknown";_dnsOutcome=@"Not attempted";}return self;}
 - (BOOL)restricted{return self.restrictionKnown&&self.routerRulePresent;}

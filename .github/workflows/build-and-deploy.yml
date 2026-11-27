@@ -48,6 +48,10 @@ jobs:
         run: |
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/network_model_tests.m Sources/Network/LGScanSnapshot.m Sources/Network/LGBonjourInventory.m Sources/Network/LGServiceEvidence.m Sources/Network/LGIdentity.c Sources/Devices/LGDevice.m Sources/Diagnostics/LGDiagnostics.m -o "$RUNNER_TEMP/network-model-tests"
           "$RUNNER_TEMP/network-model-tests"
+      - name: Test actual staged scan pipeline with owned synthetic transports
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/scan_pipeline_tests.m Sources/Network/LGScanner.m Sources/Network/LGScanSnapshot.m Sources/Network/LGServiceEvidence.m Sources/Network/LGIdentity.c Sources/Devices/LGDevice.m -o "$RUNNER_TEMP/scan-pipeline-tests"
+          "$RUNNER_TEMP/scan-pipeline-tests"
       - name: Compare Bonjour collection windows against an owned host advertisement
         run: |
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/bonjour_native_tests.m Sources/Network/LGBonjourInventory.m Sources/Network/LGServiceEvidence.m Sources/Network/LGIdentity.c Sources/Devices/LGDevice.m -o "$RUNNER_TEMP/bonjour-native-tests"

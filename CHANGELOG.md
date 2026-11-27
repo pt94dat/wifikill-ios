@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0-beta.1 — 2026-11-28
+
+- Publish detached address snapshots before bounded asynchronous identity revision; retain scanID and counter consistency.
+- Cancellable DNS continuation with soft/hard distinction and intermediate-result handling; controlled delayed replies and actual PTR experiments.
+- Dynamically enumerate Bonjour types, preserve multiple services per IP and retain service-only observations with TCP unverified.
+- Enforce neighbor host/link-layer semantics and distinguish repeated rejected records.
+- Test actual staged scanner with synthetic transport, generation/network cancellation and repeated scans; test production NBNS query against owned loopback responder.
+- Preserve redacted export and all authorized management; physical0.5 acceptance remains pending.
+
 ## 0.4.0-beta.1 — 2026-11-27
 
 - Reconstruct production Darwin neighbor parser with rejection categories, deduplication and conflicting-target suppression; ordinary read-only source only.
