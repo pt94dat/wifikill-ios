@@ -7,7 +7,7 @@
 @property(nonatomic) BOOL finished;
 @end
 @implementation LGBonjourInventory
-- (void)collect:(void(^)(NSDictionary*))completion {
+- (void)collect:(void(^)(NSDictionary<NSString*,NSDictionary*>*))completion {
  NSAssert(NSThread.isMainThread,@"Bonjour collection requires the main run loop");self.completion=completion;self.browsers=[NSMutableArray new];self.services=[NSMutableArray new];self.evidence=[NSMutableDictionary new];self.finished=NO;
  for(NSString *type in @[@"_workstation._tcp.",@"_device-info._tcp.",@"_airplay._tcp.",@"_ipp._tcp.",@"_googlecast._tcp.",@"_companion-link._tcp."]){NSNetServiceBrowser *browser=[NSNetServiceBrowser new];browser.delegate=self;[self.browsers addObject:browser];[browser searchForServicesOfType:type inDomain:@"local."];}
  dispatch_after(dispatch_time(DISPATCH_TIME_NOW,1500*NSEC_PER_MSEC),dispatch_get_main_queue(),^{self.finished=YES;for(NSNetServiceBrowser *b in self.browsers)[b stop];for(NSNetService *s in self.services)[s stop];void(^done)(NSDictionary*)=self.completion;self.completion=nil;if(done)done(self.evidence.copy);});
