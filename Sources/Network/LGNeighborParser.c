@@ -24,7 +24,7 @@ size_t lg_parse_neighbors(const unsigned char *bytes,size_t size,unsigned iface,
   if(a[0][0]<8||a[1][0]<8){s->malformed++;continue;}
   uint32_t ip;memcpy(&ip,a[0]+4,4);uint32_t host=ntohl(ip),base=address&mask;
   if((host&mask)!=base||host==base||host==(base|~mask))continue;
-  if(!(h.flags&0x400)||!(h.flags&4)){s->nonNeighbor++;continue;}
+  if(!(h.flags&LGRouteHostFlag)){s->nonNeighbor++;continue;}
   s->candidates++;unsigned length=a[1][0],name=a[1][5],alen=a[1][6];int invalid=0;
   if(!alen){s->incomplete++;invalid=1;}
   else if(alen!=6||8u+name+alen>length){s->malformed++;invalid=1;}

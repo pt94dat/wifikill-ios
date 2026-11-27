@@ -14,5 +14,5 @@ typedef struct {
  uint32_t initialized, metrics[14];
 } LGRouteHeader;
 _Static_assert(sizeof(LGRouteHeader)==92,"Darwin routing ABI mismatch");
-enum { LGRouteDestination=0, LGRouteGateway=1, LGRouteAddressCount=8, LGRouteGatewayFlag=2 };
+enum { LGRouteDestination=0, LGRouteGateway=1, LGRouteAddressCount=8, LGRouteGatewayFlag=2, LGRouteHostFlag=4 };
 #endif

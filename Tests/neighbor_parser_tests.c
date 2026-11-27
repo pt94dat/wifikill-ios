@@ -26,6 +26,7 @@ int main(void){
  assert(!lg_parse_neighbors(bytes,n*43,4,0xc0000201,0xffffff00,out,8,&s)&&s.placeholder==43&&s.uniqueRejected==43);
  for(unsigned i=0;i<43;i++){record(bytes+n*i,20,placeholder,6);}
  assert(!lg_parse_neighbors(bytes,n*43,4,0xc0000201,0xffffff00,out,8,&s)&&s.placeholder==43&&s.uniqueRejected==1);
+ record(bytes,20,valid,6);LGRouteHeader hostOnly;memcpy(&hostOnly,bytes,sizeof(hostOnly));hostOnly.flags=4;memcpy(bytes,&hostOnly,sizeof(hostOnly));assert(lg_parse_neighbors(bytes,n,4,0xc0000201,0xffffff00,out,8,&s)==1);
  record(bytes,20,valid,6);LGRouteHeader connected;memcpy(&connected,bytes,sizeof(connected));connected.flags=1;memcpy(bytes,&connected,sizeof(connected));assert(!lg_parse_neighbors(bytes,n,4,0xc0000201,0xffffff00,out,8,&s)&&s.nonNeighbor==1&&s.candidates==0);
  puts("Production Darwin parser: truncation, alignment, duplicate, conflict, redaction-pattern and valid private-MAC fixtures passed");return 0;
 }
