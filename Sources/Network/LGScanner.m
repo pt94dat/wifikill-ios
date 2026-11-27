@@ -9,6 +9,7 @@
 #import <sys/sysctl.h>
 #import <unistd.h>
 #import <mach/mach.h>
+#import <errno.h>
 static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -1;return (r.ru_utime.tv_sec+r.ru_stime.tv_sec)*1000.0+(r.ru_utime.tv_usec+r.ru_stime.tv_usec)/1000.0;}
 @implementation LGScanner
 - (instancetype)init{if((self=[super init]))_engineQueue=dispatch_queue_create("com.pt94dat.languard.scanner",DISPATCH_QUEUE_SERIAL);return self;}
@@ -32,7 +33,7 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
    }}];
   }
   [queue waitUntilAllOperationsAreFinished];if(self.generation!=generation)return;double probesEnded=NSProcessInfo.processInfo.systemUptime;
-  LGNetwork network=start.network;LGNeighbor *neighbors=calloc(1024,sizeof(*neighbors));unsigned rejected=0;size_t count=neighbors?lg_neighbors(&network,neighbors,1024,&rejected):0;LGNeighborStats ns=lg_neighbor_stats();
+  LGNetwork network=start.network;LGNeighbor *neighbors=calloc(1024,sizeof(*neighbors));unsigned rejected=0;size_t count=neighbors?lg_neighbors(&network,neighbors,1024,&rejected):0;LGNeighborStats ns={0};if(neighbors)ns=lg_neighbor_stats();else{ns.apiError=ENOMEM;ns.view=3;}
   for(size_t i=0;i<count;i++){
    NSString *ip=@(neighbors[i].ip);LGDevice *d=found[ip];if(!d){d=[LGDevice new];d.ip=ip;d.reachability=LGReachabilityCached;found[ip]=d;}d.neighborCached=YES;d.mac=@(neighbors[i].mac);d.identitySource=@"Local neighbor cache · unauthenticated identity";
   }free(neighbors);
