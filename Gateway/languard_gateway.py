@@ -34,6 +34,7 @@ class Gateway:
     def __init__(self, config, runner=subprocess.run):
         self.config, self.runner = config, runner
         self.lock = threading.RLock()
+        self.stopping = False
         self.lan = config["lan_interfaces"]
         self.wan = config["wan_interfaces"]
         if not self.lan or not self.wan or set(self.lan) & set(self.wan):
@@ -124,6 +125,8 @@ class Gateway:
         if isinstance(seconds, bool) or not isinstance(seconds, int) or not 30 <= seconds <= 900:
             raise ValueError("Lease must be 30–900 seconds")
         with self.lock:
+            if self.stopping:
+                raise RuntimeError("Gateway is stopping; new leases are refused")
             self.check_topology()
             mac = self.validate_target(mac, ip, peer)
             # update refreshes an existing element atomically; nft add is not a refresh.
@@ -274,7 +277,9 @@ def main():
         server.serve_forever()
     finally:
         try:
-            gateway.restore()
+            with gateway.lock:
+                gateway.stopping = True
+                gateway.restore()
         finally:
             server.server_close()
 

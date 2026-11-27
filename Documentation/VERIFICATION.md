@@ -1,3 +1,7 @@
+# Current audit
+
+For 0.3.0-beta.1 see [ENGINEERING_AUDIT.md](ENGINEERING_AUDIT.md), current generated release metadata and the release workflow. The record below describes the historical 0.2 release only.
+
 # Verification gates — 0.2.0-beta.1
 
 Application source/build commit: `7a8aacae235d0987d4cf8e1f229a36daf56afe5f`.

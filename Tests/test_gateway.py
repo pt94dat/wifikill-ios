@@ -69,6 +69,11 @@ class GatewayTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.gateway.restrict('02:00:00:00:00:04','192.0.2.3',duration,'192.0.2.2')
 
+    def test_shutdown_refuses_late_restriction(self):
+        self.gateway.stopping = True
+        with self.assertRaises(RuntimeError):
+            self.gateway.restrict("02:11:22:33:44:55", "192.0.2.20", 300, "192.0.2.10")
+
     def test_command_injection(self):
         for value in ['00:11:22:33:44:55; reboot','ff:ff:ff:ff:ff:ff','00:00:00:00:00:00']:
             with self.assertRaises(ValueError):

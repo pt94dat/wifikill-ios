@@ -45,7 +45,7 @@ The supported architecture remains native iOS discovery plus an explicitly enrol
 
 ## D. Verification and release evidence
 
-Baseline: 20 Python/portable-C checks passed before changes. Current local suite: 24 tests passed, including production identity/NBNS parsers and mutation-detection regression. Native Foundation assertions and full ARM64 UIKit compilation run on macOS CI. Python backend unit tests use explicitly labelled command doubles; these alone do not prove enforcement.
+Baseline: 20 Python/portable-C checks passed before changes. Current local suite: 25 tests passed, including production identity/NBNS parsers and mutation-detection regression. Native Foundation assertions and full ARM64 UIKit compilation run on macOS CI. Python backend unit tests use explicitly labelled command doubles; these alone do not prove enforcement.
 
 A separate real Linux network-namespace lab routes IPv4 and IPv6 between gateway, target, administrator and upstream namespaces. It runs the actual HTTPS agent and kernel nftables. Initial successful run [45976751179](https://github.com/pt94dat/wifikill-ios/actions/runs/45976751179) passed 19 checks: authenticated capabilities, protected management/gateway, actual target restriction and restoration, unaffected other client, LAN link preservation, crash lease expiry and unrelated firewall preservation. The release workflow repeats this lab with additional mapping, placeholder, stalled-TLS, graceful-stop and restart checks. Exact results are published as [gateway-lab-results.json](https://pt94dat.github.io/wifikill-ios/gateway-lab-results.json); do not infer a pass from a planned checklist.
 
