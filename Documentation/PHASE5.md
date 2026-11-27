@@ -64,3 +64,80 @@ NetBIOS's production socket query is additionally exercised against an owned loo
 The production LGScanner pipeline is linked to explicitly synthetic transports in a native host test. It must display copied initial rows before a delayed name, commit a second matching scanID/revision, preserve counter reconciliation, reject network-switched evidence, cancel after the first callback and complete repeated scans. This tests the actual orchestration, not a second implementation of it; it is not a physical-network or A8 performance test.
 
 A proposed strict LLINFO-bit requirement was rejected during source verification: the iOS12-family header marks RTF_LLINFO deprecated and aliases the bit as application LLDATA. The final parser requires HOST plus AF_LINK, not that deprecated bit; a HOST-only valid-MAC regression fixture prevents false rejection. This is a source-supported semantic correction, not evidence that every old incomplete record was a non-neighbor route.
+
+## Observed experiment results on released source
+
+| Experiment / condition | Observed result | Meaning / limit |
+|---|---|---|
+| Production resolver + synthetic650ms responder,400ms hard | Deadline at400.8ms; one cleanup | Reproduces missed late name; not a phone DNS-server measurement |
+| Same,800ms hard | Resolved at660.6ms | Actual fixture name accepted after the old400ms cutoff |
+| Same,1500ms hard | Resolved at717.3ms | Scheduler/load affect elapsed time; fixture delay is nominal |
+| Same,3000ms hard | Resolved at652.6ms | Useful reply returned immediately when received, not held until deadline |
+| Cancellation during pending synthetic query | Cancelled and cleaned within asserted500ms bound | Exact cancellation time was not logged; no invented number |
+| Actual host local-only PTR at400/800/1500/3000ms hard | All resolved, code0, cleanup1; observed0.5/0.4/0.5/0.4ms | Proves real DNS-SD API path for an owned known record, not physical phone naming |
+| Actual owned non-default Bonjour at1500ms | Matched;1519.2ms collection elapsed | Own observation preserved among multiple services |
+| Same at3000ms | Matched;3011.8ms | Does not establish that3s is necessary on every network |
+| Same at5000ms | Matched;5020.4ms | No battery or all-network completeness claim |
+| Actual scanner with synthetic transport | Initial address revision2.7ms, final identity revision685.7ms | Demonstrates staged delivery/copy isolation; these are not A8 scan timings or a speedup comparison against8.57s |
+| Actual scanner cancellation / switched network / repeats | Passed | Production orchestration linked to explicit controlled transports |
+| Production NBNS socket query / loopback responder | Passed on host | Actual request/response; ephemeral test-only port, production137 unchanged |
+| Production parser / validation / counter / cache fixtures | Passed | Includes HOST-only valid entry, non-neighbor route, duplicate/conflict, malformed/private MAC, expiry and identity-field stripping |
+
+The early Bonjour experiments failed at both1.5/3s despite callbacks; those candidates were not deployed. Preserving multiple observations repaired that data-loss failure. A compiler mismatch in BOOL block inference on the host was corrected with an explicit block return type. No claim is made that either issue explains every missing name in the original phone report.
+
+## Before / after against0.4
+
+| Area |0.4 baseline |0.5 implementation / remaining limit |
+|---|---|---|
+| Discovery | Whole result after identity phase | Detached early address revision plus guarded final revision; physical accuracy not newly measured |
+| Neighbor processing | AF_LINK-scoped records without HOST qualification | Non-host routes excluded; repeated rejected observations counted separately; no unavailable MAC fabricated |
+| Reverse DNS | Hard400ms result cutoff | Cancellable soft/hard continuation, progress/negative observation flag, explicit late success; phone outcome pending |
+| Bonjour | Six types, one retained observation per IP | Dynamic bounded types, multiple observations, correct removal/late-resolve handling |
+| Service-only evidence | Ignored if IP absent from TCP/cache/history | Subnet-validated observation can enter Unknown with TCP unverified; not counted as a TCP response |
+| MAC / manufacturer | Unavailable on supplied phone | Still not demonstrated; no private entitlement, escalation or database added |
+| Category / confidence | Basic service hint | User-defined, reported-unverified, confirmed-local-role and Unknown kept distinct; hints remain inferred |
+| NetBIOS | Zero home replies, parser fixtures | Query path also verified with owned loopback responder; no claim modern peers provide NBNS |
+| Cache/history | Normalized IP/time, expiry and scoped labels | Preserved; identity not permanently cached by IP; stale callbacks/labels guarded across network switches |
+| Scan consistency | Single completed snapshot | Same scanID, explicit revisions, detached initial rows, final counts recomputed with service evidence |
+| Performance | Phone8.57s / resident15.27MiB single sample | Earlier display architecture tested;0.5 physical duration/resident/battery not yet measured |
+| Stability | Module cancellation checks | Production pipeline cancellation/network-switch/repeat tests; physical stress remains pending |
+| UI | Dark diagnostics and copy/export | Details update on identity commit, old-network edits guarded, incomplete scans not logged as complete, management actions gated while enrichment pending |
+
+Global identity budget and12-worker limit can leave some DNS jobs unstarted on dense networks. `budgetNotStarted` records that limitation; this is a bounded-resource choice, not a claim that every address was queried or named. Initial/final timings and DNS outcomes remain redacted aggregates.
+
+## Implementation index
+
+- `Sources/Network/LGResolver.c`, `LGNetwork.h`: public intermediate results, cancellable soft/hard query control and cleanup metrics.
+- `LGScanner.{h,m}`: detached initial revision, overlapping Bonjour/DNS, current-generation/fingerprint checks and committed final counts.
+- `LGBonjourInventory.{h,m}`, new `LGServiceEvidence.{h,m}`: bounded dynamic types, multi-service association/removal and service-only entries.
+- `LGNeighborParser.{h,c}`, `LGRouteABI.h`: documented host-route semantics and rejection aggregation.
+- `LGNetBIOS.c`: production port unchanged; port dependency injected only in the owned transport test build.
+- `LGScanSnapshot.m`, `Sources/Devices/LGDevice.{h,m}`: advertised-only subset, copy isolation and confidence text.
+- `Sources/Diagnostics/LGDiagnostics.m`, `Sources/UI/LGNetworkController.m`, `LGDeviceDetailsController.m`: whitelist support, coherent UI revisions and scoped actions.
+- `Tests/scan_pipeline_tests.m`, `resolver_timing_tests.c`, `resolver_native_tests.c`, `bonjour_native_tests.m`, `test_netbios_transport.py`, `netbios_query_test.c`, parser/model fixtures: production code exercised with explicitly labelled transports.
+- Workflow, control/plist, package validator, repository builder and release text: ARM64/iOS12 provenance and immutable retained downloads.
+
+## Final release evidence
+
+| Evidence | Result |
+|---|---|
+| Version | 0.5.0-beta.1 |
+| Application source commit | `f3f5125e2cbad027738127ca5f3cf10026b5f819` |
+| Package | com.pt94dat.wifikillios_0.5.0-beta.1_iphoneos-arm.deb |
+| Architecture | iphoneos-arm package; native ARM64, minimum iOS12.0 |
+| Compiler | Pinned Theos / Xcode16.4 on supported macOS15 Intel runner |
+| Size | 74,824 bytes |
+| Package SHA256 | `bc3e7bb829508980f9852c82ce30c7d037370db240b92307897721a1eb69fd73` |
+| Gateway bundle SHA256 | `3d9f4a9abaa54b08417408821b8ffff7cef4b43501a376777b71379befd2e450` |
+| Python/C suite | 29 tests passed, including production resolver/parser/loopback transport |
+| Native / controlled host gates | Device/snapshot/confidence/redaction, production scanner orchestration, owned Bonjour and actual local-only PTR passed |
+| Existing management regression | 25/25 isolated kernel lab checks passed; no new management feature or physical control claim |
+| Package verification | ARM64 Mach-O, minimum OS, bundle/registration/signature page hashes passed |
+| Deployment / public verification | Passed; exact version/source, package/index/gateway hashes verified over HTTPS |
+| Independent download | Published .deb revalidated locally; embedded LGSourceCommit matched release metadata |
+| History preservation | Versions0.1–0.4 retained alongside0.5; previous gateway0.4 archive independently matched original SHA256 |
+| Physical0.5 acceptance | Pending; no inherited0.4 success claimed |
+
+[Core preflight candidate](https://github.com/pt94dat/wifikill-ios/actions/runs/46047008112) · [Final source build/deployment/public verification](https://github.com/pt94dat/wifikill-ios/actions/runs/46047524272) · [Direct Debian download](https://pt94dat.github.io/wifikill-ios/debs/com.pt94dat.wifikillios_0.5.0-beta.1_iphoneos-arm.deb) · [Existing Sileo source](https://pt94dat.github.io/wifikill-ios/) · [Release metadata](https://pt94dat.github.io/wifikill-ios/release.json).
+
+Documentation-only commits after release do not rebuild or replace the immutable package. Final acceptance still needs an authorized physical scan, preferably an owned Bonjour-advertising device or known PTR record, followed by one completed revision2 export. A network with no such evidence cannot establish naming success. MAC/manufacturer availability, A8 peak/repeated memory behavior, UI navigation/share-sheet behavior and real network-change stress remain unresolved physical acceptance items. This phase does not promise later authorization bypass or universal identity recovery.

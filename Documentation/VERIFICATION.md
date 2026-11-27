@@ -1,4 +1,15 @@
-# Current verification — 0.4.0-beta.1
+# Current verification —0.5.0-beta.1
+
+[Phase5 consolidated research, root causes, actual experiments, release evidence and physical checklist](PHASE5.md).
+
+- Source: `f3f5125e2cbad027738127ca5f3cf10026b5f819`.
+- [Final main pipeline: all tests, ARM64 build, package checks, deployment and exact public verification passed](https://github.com/pt94dat/wifikill-ios/actions/runs/46047524272).
+-29 Python/C tests; native models/pipeline; actual controlled PTR/Bonjour;25 unchanged kernel lab checks passed.
+- Published package independently revalidated:74,824 bytes; SHA256 `bc3e7bb829508980f9852c82ce30c7d037370db240b92307897721a1eb69fd73`.
+- Bundle source identifier matches; four prior versions and their published gateway archives retained.
+- Physical0.5 identification/performance acceptance pending. New access-management development remains deferred.
+
+# Historical verification — 0.4.0-beta.1
 
 [Consolidated phase4 report, root causes, exact release evidence and physical checklist](PHASE4.md).
 
