@@ -9,6 +9,7 @@ import json
 import os
 import re
 import ssl
+import signal
 import subprocess
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -217,29 +218,65 @@ class Handler(BaseHTTPRequestHandler):
     do_GET = do_PUT = do_DELETE = dispatch
 
 
+class TLSServer(ThreadingHTTPServer):
+    """Bound TLS handshakes to worker threads; a stalled handshake must not block all clients."""
+    daemon_threads = True
+    def __init__(self, address, handler, context):
+        self.context = context
+        self.slots = threading.BoundedSemaphore(16)
+        super().__init__(address, handler)
+
+    def process_request(self, request, address):
+        if not self.slots.acquire(blocking=False):
+            request.close()
+            return
+        try:
+            super().process_request(request, address)
+        except BaseException:
+            self.slots.release()
+            raise
+
+    def process_request_thread(self, request, address):
+        try:
+            request.settimeout(8)
+            secure = self.context.wrap_socket(request, server_side=True)
+            super().process_request_thread(secure, address)
+        except (ssl.SSLError, TimeoutError, OSError):
+            request.close()
+        finally:
+            self.slots.release()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     args = parser.parse_args()
     config = json.loads(Path(args.config).read_text())
     token = Path(config["token_file"]).read_text().strip()
-    if len(token) < 32 or not token.isascii():
+    if len(token) < 32 or not token.isascii() or any(c.isspace() for c in token):
         raise ValueError("Use a random ASCII token of at least 32 characters")
     if os.geteuid() != 0:
-        raise PermissionError("Gateway service needs root for nftables")
-    gateway = Gateway(config)
-    gateway.install()
-    server = ThreadingHTTPServer((config["listen_address"], config.get("port", 8443)), Handler)
-    server.gateway, server.token = gateway, token
+        raise PermissionError("Gateway service needs root/CAP_NET_ADMIN for nftables")
+    # Validate TLS material before touching existing rules. No plaintext or trust bypass mode.
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     context.minimum_version = ssl.TLSVersion.TLSv1_2
     context.load_cert_chain(config["certificate"], config["private_key"])
-    server.socket = context.wrap_socket(server.socket, server_side=True)
+    gateway = Gateway(config)
+    server = TLSServer((config["listen_address"], config.get("port", 8443)), Handler, context)
+    server.gateway, server.token = gateway, token
+    gateway.install()
+    def stop(signum, frame):
+        del signum, frame
+        threading.Thread(target=server.shutdown, daemon=True).start()
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
     try:
         server.serve_forever()
     finally:
-        gateway.restore()
-        server.server_close()
+        try:
+            gateway.restore()
+        finally:
+            server.server_close()
 
 
 if __name__ == "__main__":
