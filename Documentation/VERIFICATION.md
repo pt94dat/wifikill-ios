@@ -1,15 +1,42 @@
-# Verification gates
+# Verification gates — 0.2.0-beta.1
 
-## Current release: 0.2.0-beta.1
+Application source/build commit: `7a8aacae235d0987d4cf8e1f229a36daf56afe5f`.
 
-The corrected local checkpoint compiled ARM64 and passed 20 Python/portable-C tests before the workspace became unavailable. The final publication gate is GitHub Actions on the committed source. Native Foundation state assertions are an additional CI gate. Build, package, deployment and public-resource status must be taken from the run results.
+- [Build, tests, package, deployment and post-deployment verification — passed](https://github.com/pt94dat/wifikill-ios/actions/runs/45969171502)
+- [Independent exact-release, package-hash and rollback audit — passed](https://github.com/pt94dat/wifikill-ios/actions/runs/45969590688)
 
-Updated physical-device tests remain **pending**: upgrade/install, launch, runtime scan classification, network switching, UI/performance and actual controlled-client Internet restriction/restoration. Previous-version install/launch feedback does not certify this update.
+| Gate | Result |
+|---|---|
+| Source audit / corrections | Implemented; see PHASE2.md |
+| Python / portable C regression suite | 20 tests passed on the final committed source |
+| Native Foundation device-state regression executable | Passed on macOS; includes failed Kill vs failed Unkill readback |
+| Native ARM64 build / ldid signing | Passed in macOS CI with Xcode 16.4 / pinned Theos |
+| Debian bundle / architecture / minimum OS / signature structure / registration scripts | Validated |
+| Published website / flat APT metadata | Published and verified through HTTPS |
+| Packages / Packages.gz / Release hashes / sizes / .deb hashes | Verified after deployment and again by an independent audit job |
+| Exact current release / source commit | Matched 0.2.0-beta.1 and the source commit above |
+| Published current package size | 51,108 bytes |
+| Previous 0.1.0-beta.1 package | Retained, validated and still downloadable with its original SHA-256 |
+| Updated physical-device install / launch | Pending |
+| Updated runtime discovery accuracy / UI / performance | Pending |
+| Actual target Internet restriction and restoration | Pending; no controlled gateway/client acceptance performed |
 
-The execution environment denied Netlink sockets during an isolated kernel test attempt. No kernel/gateway/client end-to-end test passed here. Only the authenticated reference gateway agent is implemented; arbitrary stock routers remain unsupported. No full NetCut equivalence is claimed.
+Published current package SHA-256:
 
-See [Phase 2](PHASE2.md) for corrected defects, evidence definitions and the test checklist.
+`5e1b6c05c3c8aaaa0c3acdbdf69b3705cf2f64f52ae50f2f99d1e410b3c3c502`
 
-## Previous published build
+Package: https://pt94dat.github.io/wifikill-ios/debs/com.pt94dat.wifikillios_0.2.0-beta.1_iphoneos-arm.deb
 
-Native source/build commit `df90de79af2d7292313e0341c070e5bd90e0cc62`; [successful prior run](https://github.com/pt94dat/wifikill-ios/actions/runs/45964203681). Its public package, APT metadata and executable code-page hashes were verified. It is retained for rollback by the next publication.
+Sileo/Cydia source: https://pt94dat.github.io/wifikill-ios/
+
+## Verification limits
+
+Response/cache/history counts describe address observations, not authenticated unique physical devices. The exact previous count cannot be independently reconstructed from a photograph alone. Placeholder identifiers are no longer used as identity or control targets.
+
+The supported control mechanism remains an explicitly authorized HTTPS LanGuard agent on a compatible Linux/nftables gateway. Router rule readback is separate from a client Internet test. No universal stock-router support or complete NetCut equivalence is claimed.
+
+The local environment denied Netlink sockets during an isolated kernel test attempt and later became unavailable. Final compilation, testing, packaging, retention, deployment and independent publication auditing were completed through GitHub Actions; no kernel/client end-to-end or physical UI/performance success is implied.
+
+APT metadata is unsigned by GPG. HTTPS and generated hashes provide transport/integrity checks, not an independent repository signing identity.
+
+[Phase 2 findings and physical-device acceptance checklist](PHASE2.md).
