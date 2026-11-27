@@ -74,6 +74,7 @@ def main():
             ns(name,['ip','link','set','lo','up'])
         ns(GW,['sysctl','-qw','net.ipv4.ip_forward=1'])
         ns(GW,['sysctl','-qw','net.ipv6.conf.all.forwarding=1'])
+        ns(GW,['sysctl','-qw','net.ipv6.conf.default.forwarding=1'])
         ns(GW,['ip','link','add','br-lan','type','bridge'])
         ns(GW,['ip','link','set','br-lan','address','02:00:00:00:00:01'])
         ns(GW,['ip','addr','add','192.0.2.1/24','dev','br-lan'])
@@ -89,7 +90,16 @@ def main():
         # Short settling interval is for namespace link setup only, not fabricated app progress.
         time.sleep(1)
         check('baseline_target_ipv4',reachable(TARGET))
-        check('baseline_target_ipv6',reachable(TARGET,True))
+        deadline=time.monotonic()+8
+        ipv6_ready=reachable(TARGET,True)
+        while not ipv6_ready and time.monotonic()<deadline:
+            time.sleep(.25)
+            ipv6_ready=reachable(TARGET,True)
+        if not ipv6_ready:
+            for peer in NAMES:
+                print('IPv6 diagnostic',peer,ns(peer,['ip','-6','addr','show']).stdout,ns(peer,['ip','-6','route','show']).stdout,ns(peer,['ip','-6','neigh','show']).stdout,flush=True)
+            print(ns(GW,['sysctl','net.ipv6.conf.br-lan.forwarding','net.ipv6.conf.wan0.forwarding']).stdout,flush=True)
+        check('baseline_target_ipv6',ipv6_ready)
         check('baseline_admin_ipv4',reachable(ADMIN))
         check('baseline_admin_ipv6',reachable(ADMIN,True))
         run(['openssl','req','-x509','-newkey','rsa:2048','-nodes','-days','1','-keyout',str(directory/'key.pem'),'-out',str(directory/'cert.pem'),'-subj','/CN=LanGuard isolated lab','-addext','subjectAltName=IP:192.0.2.1'])
