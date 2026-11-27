@@ -16,7 +16,7 @@ Open **Diagnostics → Copy / Export** for a whitelist-redacted runtime JSON rep
 
 Invalid/redacted MAC values are rejected. Response, cache and unknown history counts are separate. Scans use bounded concurrency and cancellation, a single neighbor snapshot, network-change checks and bounded reverse DNS. The native main screen now has device cards, status filters and concise evidence counts; technical identity and network data live in detail screens.
 
-Native scrollable detail/authorization screens separate connectivity from control, with explicit keyboard entry. Names can be user-defined, DNS-reported, Bonjour-advertised or NetBIOS-reported. These observations are unauthenticated. A read-only privileged neighbor view is attempted where the runtime permits it, with standard-view fallback and capability telemetry; no new entitlement or MAC availability guarantee is introduced. Address-only labels expire to reduce DHCP reuse errors. Physical device type/manufacturer are not fabricated. A response or refusal is evidence about an address, not proof of current Internet access or unique physical identity.
+Native scrollable detail/authorization screens separate connectivity from control, with explicit keyboard entry. Names can be user-defined, DNS-reported, Bonjour-advertised or NetBIOS-reported. These observations are unauthenticated. The current build uses an ordinary read-only neighbor view with classified parser/API telemetry; no private mode, entitlement or MAC availability guarantee is introduced. Address-only labels expire to reduce DHCP reuse errors. Physical device type/manufacturer are not fabricated. A response or refusal is evidence about an address, not proof of current Internet access or unique physical identity.
 
 ## Authorized control
 

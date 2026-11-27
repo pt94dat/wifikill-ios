@@ -1,4 +1,15 @@
-# Current verification — 0.3.0-beta.1
+# Current verification — 0.4.0-beta.1
+
+[Consolidated phase4 report, root causes, exact release evidence and physical checklist](PHASE4.md).
+
+- Source: `ca38c9b25634445e1e35b326a9e374dba067dc1f`.
+- [Main pipeline: build, tests, deployment and public exact-release verification passed](https://github.com/pt94dat/wifikill-ios/actions/runs/46032550437).
+- 27 Python/C tests, native fixtures, actual controlled host DNS/Bonjour and 25 unchanged gateway lab checks passed.
+- Published .deb independently downloaded and revalidated: 68,940 bytes; SHA256 `9500c06a591cec525dad52754531dd20985e0729b5eb11c0bb9ec045f35201e1`.
+- Bundle build identifier matches exact source. Three old .deb versions and the original0.3 gateway archive remain available.
+- Physical0.4 testing and identity availability on the target network remain pending. Kill/Unkill development is deferred in this phase.
+
+# Historical verification — 0.3.0-beta.1
 
 [Consolidated audit, fixes, limitations and exact release evidence](ENGINEERING_AUDIT.md).
 
