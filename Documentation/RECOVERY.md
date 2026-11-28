@@ -6,7 +6,7 @@
 
 Không suy ra 16 truy vấn âm trên iPhone chắc chắn có PTR phía sau. Chưa có bằng chứng rằng iPhone mục tiêu đã nhận được tên/MAC sau sửa. Không quảng cáo hoàn tất nhận diện thiết bị hay tương đương NetCut.
 
-Ứng viên là **0.5.1-beta.1 / build 6**, dành cho một lỗi đã tái hiện và thay đổi điều phối có giới hạn. Chỉ phát hành sau kiểm thử native/build/package. Kết quả CI và phát hành được bổ sung bên dưới khi hoàn tất.
+Đã phát hành **0.5.1-beta.1 / build 6** sau gate native/build/package, dành cho lỗi đã tái hiện và thay đổi điều phối có giới hạn. Đã tải lại gói công khai, xác minh SHA-256 và source commit bên trong `Info.plist`. Nghiệm thu trên iPhone vẫn **pending**; không coi kết quả host là kết quả A8.
 
 ## 2. Kiến trúc và quyết định
 
@@ -68,7 +68,7 @@ Device details diễn giải `noRecordReported` bằng câu “No PTR observed b
 - Native macOS tiếp tục đăng ký PTR LocalOnly do test sở hữu; thêm17 subscriptions đồng thời tới **một** PTR đó. Không gọi đây là17 thiết bị.
 - Native Bonjour đăng ký service riêng ngoài sáu type mặc định; kiểm tra đúng tên/type trong observations và so sánh1.5/3/5giây. Chưa đo phone multicast.
 - Giữ pipeline thực với synthetic transport để kiểm tra revision, association service-only, copy-isolation, cancel/network switch và scan lặp. Không xem đây là benchmark mạng.
-- Portable local suite:30 test methods pass, khoảng5giây; các C regression dùng ASan/UBSan. LeakSanitizer tắt theo giới hạn ptrace môi trường; cleanup của DNS refs được assert riêng.
+- Portable local suite cuối:31 test methods pass,5.269giây; các C regression dùng ASan/UBSan. LeakSanitizer tắt theo giới hạn ptrace môi trường; cleanup của DNS refs được assert riêng.
 
 ## 7. Trước / sau 0.5.0
 
@@ -92,9 +92,27 @@ Sửa trọng tâm: `Sources/Network/LGResolver.c`, `LGNetwork.h`, `LGScanner.m`
 
 Review kiến trúc: giữ phần đã có bằng chứng, thay riêng DNS scheduling. Review implementation: context không trỏ vào slot đã reuse khi ref chưa deallocate; không chia sẻ buffer giữa query; cleanup trên timeout/cancel/error; chặn callback sau positive hoàn tất. Review compatibility: chỉ public C DNS-SD/poll và API UIKit hiện có, không tăng minimum iOS. Review network: không gán âm API thành NXDOMAIN; refusal không thành physical identity. Review privacy: không export tên/IP/MAC/token; giới hạn và redaction giữ nguyên. Review adversarial: nhiều negative, malformed trước positive, removal/wrong type/class, fd/API failure, capacity và network-change. Đây là tự review theo từng góc nhìn, không giả làm nhóm reviewer độc lập.
 
-## 9. Release gate
+## 9. Bằng chứng phát hành
 
-Chưa xác nhận phát hành tại thời điểm ghi phần này. Các kết quả CI, commit và checksum chính xác được ghi vào phụ lục sau khi thực sự hoàn tất. Không merge trước khi native tests/build/package qua gate. 0.5.0 giữ nguyên để rollback.
+| Hạng mục | Kết quả đã xác minh |
+|---|---|
+| Version / build |0.5.1-beta.1 /6|
+| Source commit |[`f8b6cf1577f63fd32e51522eafd0dc23c75c78ab`](https://github.com/pt94dat/wifikill-ios/commit/f8b6cf1577f63fd32e51522eafd0dc23c75c78ab)|
+| Gói |`com.pt94dat.wifikillios_0.5.1-beta.1_iphoneos-arm.deb`|
+| Kích thước tải lại |80,182bytes|
+| SHA-256 gói công khai |`9b0f45685191a488442165f06548b1368a9f72c67ceb3a58339b91f7f1e0bc31`|
+| Tải trực tiếp |[Gói .deb](https://pt94dat.github.io/wifikill-ios/debs/com.pt94dat.wifikillios_0.5.1-beta.1_iphoneos-arm.deb)|
+| Sileo source |https://pt94dat.github.io/wifikill-ios/|
+| Gate nhánh kỹ thuật |[46093070208](https://github.com/pt94dat/wifikill-ios/actions/runs/46093070208): gateway-lab và build success; deploy/verify được skip đúng theo branch|
+| Pipeline main |[46093584618](https://github.com/pt94dat/wifikill-ios/actions/runs/46093584618): gateway-lab/build/deploy/verify đều success|
+| Package validation |ARM64 Mach-O, Debian iphoneos-arm, minimum12.0, same bundle/package ID, code page hashes/signature bounds và resources qua validator|
+| Association tải lại |`CFBundleShortVersionString=0.5.1`, `CFBundleVersion=6`, `LGSourceCommit=f8b6cf1577f63fd32e51522eafd0dc23c75c78ab`|
+| Giữ bản cũ |0.1/0.2/0.3/0.4/0.5.0 đều còn trong APT cùng0.5.1; SHA0.5.0 vẫn`bc3e7bb829508980f9852c82ce30c7d037370db240b92307897721a1eb69fd73`|
+| Gateway bundle mới |`languard-gateway-0.5.1-beta.1.tar.gz`, SHA`564f62fe9fc2e7bcc4108718e402d421c3867f12a0d4e23857c625a192fb7f29`; backend không thay đổi chức năng|
+| Gateway0.5.0 giữ nguyên |SHA`3d9f4a9abaa54b08417408821b8ffff7cef4b43501a376777b71379befd2e450` được đối chiếu lại|
+| Physical iPhone |Chưa chạy bản mới; cần checklist mục11|
+
+Không gán hash artifact preflight cho gói public: hai lần build có thể khác timestamp. Bảng trên dùng **gói public tải lại thực tế**. HTTPS/hash xác minh tính nhất quán; APT GPG signing vẫn chưa được bổ sung.
 
 ## 10. Những phần còn chưa giải quyết
 
@@ -111,7 +129,7 @@ Chưa xác nhận phát hành tại thời điểm ghi phần này. Các kết q
 
 **Phép thử đầu tiên không cần cấu hình router/máy tính:** sau nâng cấp, chạy scan đến cuối → Diagnostics → **Test local PTR** → chờ kết quả → Export một JSON. Kỳ vọng `positiveControl`: `setupCode=0`, `registered=1`, `outcome=1`, `matched=1`, `removed=1`, `cleaned=1`. Nếu thất bại, mã setup/query cho biết phép thử dừng ở registration hay resolution; không che lỗi hoặc dùng dữ liệu giả để báo pass. Đây là positive control thật dùng daemon DNS-SD trên chính iPhone, chỉ LocalOnly, không xác nhận tên hay khả năng multicast của LAN. Kết quả còn lại của scan giữ nguyên.
 
-Ứng dụng đăng ký duy nhất một PTR thử LocalOnly có tên ngẫu nhiên, TTL10, đọc lại bằng **batch resolver sản xuất**, xóa record và deallocate connection/query; tổng thời gian chờ setup≤1s/query≤0.8s, ngoài main thread. Không gửi tên thật hoặc lấy MAC. Không thêm quyền/daemon root. JSON chỉ xuất mã trạng thái/thời gian, không xuất tên/IP fixture. Controlled tests gồm lỗi create/register/fd/callback/query, tên không khớp, lỗi remove và thành công; assert cleanup cả đường thất bại. Native host chạy cùng hàm production ba lần; kết quả ghi bên dưới. Test này cần thiết để phân biệt iPhone không chạy được public API với LAN không cung cấp PTR, không thay thế bản sửa chức năng DNS.
+Ứng dụng đăng ký duy nhất một PTR thử LocalOnly có tên ngẫu nhiên, TTL10, đọc lại bằng **batch resolver sản xuất**, xóa record và deallocate connection/query; tổng thời gian chờ setup≤1s/query≤0.8s, ngoài main thread. Không gửi tên thật hoặc lấy MAC. Không thêm quyền/daemon root. JSON chỉ xuất mã trạng thái/thời gian, không xuất tên/IP fixture. Controlled tests gồm lỗi create/register/fd/callback/query, tên không khớp, lỗi remove và thành công; assert cleanup cả đường thất bại. Native host của bản cuối chạy cùng hàm production10 lần liên tiếp; kết quả ghi bên dưới. Test này cần thiết để phân biệt iPhone không chạy được public API với LAN không cung cấp PTR, không thay thế bản sửa chức năng DNS.
 
 ### Nếu cần kiểm tra thêm nguồn LAN có ground truth
 
@@ -123,7 +141,7 @@ Dự đoán kiểm chứng: DNS có PTR→`resolved` và tên hiển thị; ch�
 
 Một lần chạy fixture batch phát hiện `live != 0` dù các lượt trước đã qua. Trace xác nhận deadline có thể vượt qua giữa hai lần đọc monotonic clock: vòng lặp thoát ở kiểm tra thứ hai, trước khi cleanup refs chưa finished. Đã đổi sang một trạng thái stop được chốt ở đầu vòng; deadline vượt giữa vòng sẽ quay lại cleanup thay vì break trực tiếp. Thêm200 chu kỳ deadline1ms, xen kẽ positive/negative, assert không còn ref sống. Đây là lỗi mới phát hiện ở ứng viên chưa phát hành; commit đầu tiên không được merge/publish. Không xem một lượt test pass là đủ để bỏ qua failure.
 
-Bổ sung source: `LGDNSCheck.c/.h`, UI nút positive control và export whitelist có kiểm tra redaction. Bộ portable suite cuối dự kiến31 test methods; số thực tế CI ghi trong phụ lục, không lấy dự kiến làm bằng chứng.
+Bổ sung source: `LGDNSCheck.c/.h`, UI nút positive control và export whitelist có kiểm tra redaction. Bộ portable suite cuối thực tế31 test methods pass; số và thời gian CI ghi trong phụ lục.
 
 ### Provenance được nối vào sản phẩm
 
@@ -136,3 +154,51 @@ Fixture batch cũng dùng130 IP/tên PTR **khác nhau**, kiểm tra chính xác 
 Run `46092560897` bị chặn trước build/release: hai lượt LocalOnly thành công nhưng lượt3 registration trả `-65548` (NameConflict). Test dùng lại cùng tên owner reverse sau khi remove; daemon có thể chưa hoàn tất xử lý remove trước registration tiếp theo. Không tăng sleep/timeout để che lỗi: mỗi lần production check nay có **owner reverse riêng** trong namespace LocalOnly, dùng địa chỉ loopback thử127/8, sequence atomic theo tiến trình và tên expected riêng. Không gửi probe tới địa chỉ đó. Deallocate vẫn bắt buộc. Native regression tăng lên10 lần liên tiếp và flush log trước assertion. Đây là sửa fixture/control lifecycle, không phải bằng chứng rằng đã chữa MAC hay LAN Bonjour trên iPhone.
 
 Review lịch chạy cuối: không để NBNS và DNS nối tiếp nhau thành hai cửa sổ chờ. Bỏ wait trước DNS, join worker trước khi áp dụng kết quả PTR; tránh race khi cả hai nguồn điền hostname. Pipeline native dùng NBNS trễ250ms/DNS trễ650ms và cờ atomic để assert chúng thực sự chồng lấp, không dùng một ngưỡng thời gian mong manh làm bằng chứng. Đây là synthetic scheduling test, không phải tốc độ iPhone.
+
+## Phụ lục — kết quả cuối của source đã phát hành
+
+- Main native pipeline: initial5.6ms/final703.5ms trong **synthetic transports**, cùng scanID và detached revisions; NBNS250ms/DNS650ms được assert chồng lấp bằng cờ atomic. Đây không phải scan LAN hoặc benchmark iPhone.
+- Ground truth observation fixture: expected3/observed3/FP0/FN0; PTR và Bonjour gắn đúng địa chỉ. Không suy ra accuracy mạng nhà.
+- Host Bonjour:1.5/3/5s đều matched đúng service sở hữu; thời gian1568.9/3013.8/5048.8ms.
+- Host batch DNS:17 subscriptions cùng một owned PTR đều resolved/cleaned. Fixture riêng dùng130 tên/IP khác nhau để kiểm tra association và refill slot.
+- Production LocalOnly control:10/10 registered/matched/removed/cleaned; khoảng1.4–1.9ms trên runner macOS. Không suy ra thời gian iPhone.
+-31 Python/C test methods pass trên main,46.675s (bao gồm compile/ASan); local31 pass5.269s. Thêm5 lượt bounded-batch riêng, tổng1000 chu kỳ deadline1ms không giữ lại ref.
+-25 kiểm tra gateway namespace IPv4/IPv6 pass; bao gồm auth, mapping mismatch, bảo vệ management/gateway, hạn chế/khôi phục forwarded client flow, lease expiry sau crash và giữ firewall không liên quan. Không kiểm tra Internet công cộng hay thao tác quản lý từ iPhone.
+- Các failure native/cleanup nêu phía trên được sửa **trước** khi merge/publish. Bản làm việc không được phát hành chỉ vì một lượt CI pass.
+- Source chính đã merge main; nhánh`fix/dns-intermediate-negative-20261128` giữ source đã qua gate. Commit báo cáo sau phát hành dùng`[skip ci]`, không rebuild/ghi đè phiên bản immutable.
+
+Danh sách31 file thay đổi so baseline, có thể xem [diff nguồn đầy đủ](https://github.com/pt94dat/wifikill-ios/compare/4fa1302f7d5f12c5631c641932add240b67ece09...f8b6cf1577f63fd32e51522eafd0dc23c75c78ab):
+
+```text
+.github/workflows/build-and-deploy.yml
+Documentation/RECOVERY.md
+README.md
+Resources/Info.plist
+Scripts/build_repository.py
+Scripts/validate_package.py
+Sources/Devices/LGDevice.h
+Sources/Devices/LGDevice.m
+Sources/Diagnostics/LGDiagnostics.m
+Sources/Network/LGDNSCheck.c
+Sources/Network/LGDNSCheck.h
+Sources/Network/LGIdentity.c
+Sources/Network/LGNetwork.h
+Sources/Network/LGResolver.c
+Sources/Network/LGScanner.m
+Sources/Network/LGServiceEvidence.m
+Sources/UI/LGDeviceDetailsController.m
+Sources/UI/LGNetworkController.m
+Tests/dnscheck_shim.h
+Tests/dnscheck_tests.c
+Tests/identity_tests.c
+Tests/model_tests.m
+Tests/network_model_tests.m
+Tests/resolver_batch_tests.c
+Tests/resolver_native_tests.c
+Tests/resolver_tests.c
+Tests/resolver_timing_tests.c
+Tests/scan_pipeline_tests.m
+Tests/test_network_engine.py
+Website/index.html
+control
+```
