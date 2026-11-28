@@ -34,7 +34,7 @@ def main():
     assert isinstance(releases,list) and len(releases)<=20
     retained=[]
     gateway_sums=None
-    for release in releases[-5:]:
+    for release in releases:
         path=release['package']
         assert re.fullmatch(r'debs/com\.pt94dat\.wifikillios_[0-9A-Za-z.+~_-]+_iphoneos-arm\.deb',path)
         expected=release['sha256']

@@ -12,6 +12,7 @@ import ssl
 import signal
 import subprocess
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -57,6 +58,59 @@ class Gateway:
     def neighbors(self):
         values = json.loads(self.run(["ip", "-j", "neigh", "show"]))
         return [v for v in values if v.get("dev") in self.lan and v.get("lladdr") and not set(v.get("state", [])) & {"FAILED", "INCOMPLETE"}]
+
+    def devices(self):
+        """Authorized observations, not online status. DHCP never authorizes a restriction."""
+        rows, neighbor_conflicts = {}, set()
+        for raw in self.neighbors():
+            try:
+                ip, mac = str(ipaddress.ip_address(raw["dst"])), mac_value(raw["lladdr"])
+            except (KeyError, ValueError):
+                continue
+            if ip in rows and rows[ip]["lladdr"] != mac:
+                neighbor_conflicts.add(ip)
+            rows[ip] = {**raw, "dst": ip, "lladdr": mac, "source": "neighbor"}
+        files = self.config.get("dnsmasq_lease_files", [])
+        if not isinstance(files, list) or len(files) > 8 or any(not isinstance(p, str) or not os.path.isabs(p) for p in files):
+            raise ValueError("Explicit absolute lease paths required")
+        networks = [ipaddress.ip_network(n) for n in self.config.get("inventory_networks", [])]
+        if files and (not networks or any(n.version != 4 for n in networks)):
+            raise ValueError("Explicit IPv4 inventory networks required for DHCP")
+        leases, conflicts = {}, set()
+        now = int(time.time())
+        for file in files:
+            with open(file, encoding="utf-8") as stream:
+                text = stream.read(1024 * 1024 + 1)
+            if len(text) > 1024 * 1024 or len(text.splitlines()) > 4096:
+                raise ValueError("Lease inventory exceeds bounded size")
+            # dnsmasq's documented format: expiry MAC IPv4 hostname client-id.
+            for line in text.splitlines():
+                fields = line.split()
+                if len(fields) != 5:
+                    continue
+                try:
+                    expiry, mac, ip = int(fields[0]), mac_value(fields[1]), ipaddress.ip_address(fields[2])
+                except ValueError:
+                    continue
+                if expiry < 0 or (expiry and expiry <= now) or ip.version != 4 or not any(ip in n and ip not in (n.network_address, n.broadcast_address) for n in networks):
+                    continue
+                key = str(ip)
+                if key in leases and leases[key]["lladdr"] != mac:
+                    conflicts.add(key)
+                hostname = fields[3] if fields[3] != "*" and len(fields[3]) <= 128 and all(32 < ord(c) < 127 for c in fields[3]) else ""
+                leases[key] = {"dst": key, "lladdr": mac, "hostname": hostname, "source": "dnsmasq", "expires_at": expiry}
+        for ip, lease in leases.items():
+            if ip in conflicts or ip in neighbor_conflicts:
+                continue
+            if ip in rows:
+                if rows[ip]["lladdr"] == lease["lladdr"]:
+                    rows[ip]["hostname"] = lease["hostname"]
+                    rows[ip]["expires_at"] = lease["expires_at"]
+            else:
+                rows[ip] = lease
+        for ip in neighbor_conflicts:
+            rows.pop(ip, None)
+        return list(rows.values())[:2048]
 
     def check_topology(self):
         rules = json.loads(self.run(["nft", "-j", "list", "ruleset"]))
@@ -201,7 +255,7 @@ class Handler(BaseHTTPRequestHandler):
             elif self.command == "GET" and path == "/v1/restrictions":
                 data = {"active": gateway.active()}
             elif self.command == "GET" and path == "/v1/devices":
-                data = {"devices": gateway.neighbors()}
+                data = {"devices": gateway.devices()}
             elif self.command == "DELETE" and path == "/v1/restrictions":
                 data = gateway.restore()
             elif path.startswith("/v1/restrictions/") and self.command in ("PUT", "DELETE"):

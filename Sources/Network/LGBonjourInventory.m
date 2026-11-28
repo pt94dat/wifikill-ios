@@ -42,7 +42,8 @@ static void type_reply(DNSServiceRef ref,DNSServiceFlags flags,uint32_t interfac
  if(self.finished||![self.services containsObject:service])return;if(![self.resolved containsObject:service]){[self.resolved addObject:service];[self bump:@"resolved"];}NSString *name=service.name.length?service.name:service.hostName;if(!name.length||name.length>128)return;
  for(NSData *data in service.addresses){if(data.length<sizeof(struct sockaddr_in))continue;const struct sockaddr *sa=data.bytes;if(sa->sa_family!=AF_INET)continue;const struct sockaddr_in *addr=data.bytes;char ip[16];inet_ntop(AF_INET,&addr->sin_addr,ip,sizeof(ip));
   NSString *hint=[service.type containsString:@"_ipp."]?@"Printer service advertised":([service.type containsString:@"_airplay."]?@"AirPlay service advertised":([service.type containsString:@"_googlecast."]?@"Cast service advertised":@"Device type unknown"));
-  NSDictionary *row=@{@"name":name,@"host":service.hostName?:@"",@"service":service.type?:@"",@"typeHint":hint};self.evidence[@(ip)]=[LGServiceEvidence mergeObservation:row previous:self.evidence[@(ip)]];
+  NSMutableDictionary *row=[@{@"name":name,@"host":service.hostName?:@"",@"service":service.type?:@"",@"typeHint":hint} mutableCopy];
+  NSData *txt=service.TXTRecordData;if(txt.length&&txt.length<=4096){NSDictionary *fields=[NSNetService dictionaryFromTXTRecordData:txt];for(NSString *key in @[@"model",@"manufacturer"]){NSData *raw=fields[key];if(![raw isKindOfClass:NSData.class]||!raw.length||raw.length>128)continue;NSString *value=[[NSString alloc]initWithData:raw encoding:NSUTF8StringEncoding];if(value.length&&[value rangeOfCharacterFromSet:NSCharacterSet.controlCharacterSet].location==NSNotFound)row[key]=value;}}self.evidence[@(ip)]=[LGServiceEvidence mergeObservation:row previous:self.evidence[@(ip)]];
  }
 }
 @end

@@ -37,7 +37,7 @@ for package in packages:
     entries.append(entry)
     version=result['metadata']['Version']
     previous=next((r for r in retained if r['version']==version),None)
-    metadata=previous or {'name':'LanGuard','version':version,'package':'debs/'+package.name,'sha256':result['sha256'],'source_commit':os.environ.get('GITHUB_SHA',subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()),'gateway_bundle':'gateway/languard-gateway-0.5.1-beta.1.tar.gz','physical_device_tests':'pending','access_control':'Compatible configured HTTPS gateway agent required. Router rule readback and target Internet verification are separate.'}
+    metadata=previous or {'name':'LanGuard','version':version,'package':'debs/'+package.name,'sha256':result['sha256'],'source_commit':os.environ.get('GITHUB_SHA',subprocess.check_output(['git','rev-parse','HEAD'],cwd=root,text=True).strip()),'gateway_bundle':'gateway/languard-gateway-0.6.0-beta.1.tar.gz','physical_device_tests':'pending','access_control':'Compatible configured HTTPS gateway agent required. Router rule readback and target Internet verification are separate.'}
     assert metadata['sha256']==result['sha256'],'Refusing to replace an immutable published version'
     releases.append(metadata)
     (out/('validation-'+version+'.json')).write_text(json.dumps(result,indent=2))
@@ -50,9 +50,9 @@ assert (out/'release.json').exists()
 (out/'gateway').mkdir(exist_ok=True)
 for retained_bundle in (root/'build/retained/gateway').glob('*.tar.gz'):
     shutil.copy2(retained_bundle,out/'gateway'/retained_bundle.name)
-gateway_archive=out/'gateway/languard-gateway-0.5.1-beta.1.tar.gz'
+gateway_archive=out/'gateway/languard-gateway-0.6.0-beta.1.tar.gz'
 with tarfile.open(gateway_archive,'w:gz') as archive:
-    for source in ['Gateway/languard_gateway.py','Gateway/install_gateway.py','Gateway/config.example.json','Gateway/README.md','Gateway/service/languard-gateway.service','Gateway/service/languard-gateway-avahi.service','LICENSE']:
+    for source in ['Gateway/languard_gateway.py','Gateway/install_gateway.py','Gateway/export_enrollment.py','Gateway/config.example.json','Gateway/README.md','Gateway/service/languard-gateway.service','Gateway/service/languard-gateway-avahi.service','LICENSE']:
         archive.add(root/source,arcname=source)
 (out/'gateway/SHA256SUMS').write_text(''.join(hashlib.sha256(bundle.read_bytes()).hexdigest()+'  '+bundle.name+'\n' for bundle in sorted((out/'gateway').glob('*.tar.gz'))))
 if (root/'build/gateway-lab-results.json').exists():

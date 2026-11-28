@@ -17,6 +17,7 @@ NAMES=['lgw-audit','lgt-audit','lga-audit','lww-audit']
 GW,TARGET,ADMIN,WAN=NAMES
 PROCESSES=[]
 RESULTS=[]
+INVENTORY_EVIDENCE=[]
 
 
 def run(args,*,check=True,**kwargs):
@@ -107,6 +108,12 @@ def main():
         (directory/'token').write_text(token)
         os.chmod(directory/'token',0o600)
         config={'listen_address':'192.0.2.1','port':18443,'lan_interfaces':['br-lan'],'wan_interfaces':['wan0'],'protected_macs':['02:00:00:00:00:03'],'token_file':str(directory/'token'),'certificate':str(directory/'cert.pem'),'private_key':str(directory/'key.pem')}
+        leasefile=directory/'dnsmasq.leases';leasefile.touch()
+        config.update(dnsmasq_lease_files=[str(leasefile)],inventory_networks=['192.0.2.0/24'])
+        dnsmasq=subprocess.Popen(['ip','netns','exec',GW,'dnsmasq','--no-daemon','--user=root','--port=0','--no-hosts','--no-resolv','--interface=br-lan','--bind-interfaces','--dhcp-authoritative','--dhcp-range=192.0.2.100,192.0.2.110,255.255.255.0,1h','--dhcp-leasefile='+str(leasefile),'--pid-file='+str(directory/'dnsmasq.pid')],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        PROCESSES.append(dnsmasq);time.sleep(.3)
+        ns(TARGET,['udhcpc','-i','eth0','-n','-q','-t','3','-T','2','-s','/bin/true','-x','hostname:languard-owned-target'])
+        check('actual_dhcp_exchange_created_lease',bool(leasefile.read_text().strip()))
         (directory/'config.json').write_text(json.dumps(config))
         log=(directory/'agent.log').open('w')
         agent=subprocess.Popen(['ip','netns','exec',GW,sys.executable,str(ROOT/'Gateway/languard_gateway.py'),'--config',str(directory/'config.json')],stdout=log,stderr=log)
@@ -131,6 +138,11 @@ def main():
                 raise RuntimeError('Gateway startup failed: '+(directory/'agent.log').read_text()[-3000:])
             time.sleep(.2)
         check('authenticated_tls_capabilities',status==200 and cap['management_authorized'])
+        status,inventory=api('GET','/v1/devices');leases=[row for row in inventory.get('devices',[]) if row.get('source')=='dnsmasq' and row.get('lladdr')=='02:00:00:00:00:04']
+        check('actual_dhcp_mac_name_via_authenticated_inventory',status==200 and len(leases)==1 and leases[0].get('hostname')=='languard-owned-target')
+        INVENTORY_EVIDENCE.extend(leases)
+        status,_=api('PUT','/v1/restrictions/02:00:00:00:00:04',{'ip':leases[0]['dst'],'seconds':30})
+        check('dhcp_allocation_alone_cannot_authorize_kill',status==400)
         stalled=subprocess.Popen(['ip','netns','exec',ADMIN,sys.executable,'-c',"import socket,time; s=socket.create_connection(('192.0.2.1',18443)); time.sleep(5)"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         PROCESSES.append(stalled)
         time.sleep(.2)
@@ -179,7 +191,7 @@ def main():
             time.sleep(.5)
         check('kernel_expiry_restores_after_agent_crash',reachable(TARGET) and reachable(TARGET,True))
         check('unrelated_firewall_table_preserved','unrelated_test' in ns(GW,['nft','-j','list','table','inet','unrelated_test']).stdout)
-        report={'kind':'real isolated Linux network namespace integration','physical_iphone_tested':False,'public_internet_tested':False,'results':RESULTS}
+        report={'kind':'real isolated Linux network namespace integration','physical_iphone_tested':False,'public_internet_tested':False,'inventoryEvidence':INVENTORY_EVIDENCE,'results':RESULTS}
         (ROOT/'build').mkdir(exist_ok=True)
         (ROOT/'build/gateway-lab-results.json').write_text(json.dumps(report,indent=2))
         print(json.dumps(report,indent=2))

@@ -1,4 +1,5 @@
 #import "LGGateway.h"
+#import "LGEndpoint.h"
 #import "Storage/LGStore.h"
 #import "Network/LGNetworkContext.h"
 @interface LGGateway()
@@ -7,11 +8,7 @@
 @property(nonatomic) NSUInteger epoch;
 @end
 @implementation LGGateway
-+ (NSString*)canonicalEndpoint:(NSString*)value{
- NSURLComponents *c=[NSURLComponents componentsWithString:[value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]];
- if(![c.scheme.lowercaseString isEqual:@"https"]||!c.host.length||c.user||c.password||c.query||c.fragment||(c.path.length&&![c.path isEqual:@"/"]))return nil;
- c.scheme=@"https";c.host=c.host.lowercaseString;c.path=@"";if(c.port.integerValue==443)c.port=nil;return c.URL.absoluteString;
-}
++ (NSString*)canonicalEndpoint:(NSString*)value{return LGCanonicalEndpoint(value);}
 - (instancetype)init{if((self=[super init])){NSURLSessionConfiguration *c=NSURLSessionConfiguration.ephemeralSessionConfiguration;c.timeoutIntervalForRequest=8;c.timeoutIntervalForResource=12;_session=[NSURLSession sessionWithConfiguration:c delegate:self delegateQueue:NSOperationQueue.mainQueue];_endpoint=[self.class canonicalEndpoint:[NSUserDefaults.standardUserDefaults stringForKey:@"endpoint"]?:@""]?:@"";_authorizationStatus=@"Access control not configured";_candidates=@[];_services=[NSMutableArray new];}return self;}
 - (void)invalidate:(NSString*)reason{self.epoch++;self.supported=NO;self.authorizationStatus=reason;}
 - (BOOL)isBound{NSDictionary *all=[NSUserDefaults.standardUserDefaults dictionaryForKey:@"gateway.bindings.v2"]?:@{};return self.networkKey.length&&[all[self.endpoint] isEqual:self.networkKey];}

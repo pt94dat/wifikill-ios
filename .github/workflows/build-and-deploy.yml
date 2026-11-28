@@ -1,7 +1,7 @@
 name: Build native ARM64 and publish validated APT repository
 on:
   push:
-    branches: [main, engineering-audit, phase4-engine, phase5-identity, fix/dns-intermediate-negative-20261128]
+    branches: [main, engineering-audit, phase4-engine, phase5-identity, fix/dns-intermediate-negative-20261128, reference-reuse]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Install isolated lab dependencies
-        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 curl openssl
+        run: sudo apt-get update && sudo apt-get install -y nftables iproute2 curl openssl dnsmasq-base udhcpc
       - name: Run real routed IPv4 and IPv6 control and crash-recovery checks
         run: sudo python3 Tests/integration/gateway_lab.py
       - uses: actions/upload-artifact@v4
@@ -40,13 +40,25 @@ jobs:
           test -d "$(xcrun --sdk iphoneos --show-sdk-path)"
           xcodebuild -version
           xcrun --sdk iphoneos --show-sdk-version
+      - uses: actions/download-artifact@v4
+        with:
+          name: isolated-gateway-lab-results
+          path: build
+      - name: Verify reused SimplePing with actual unprivileged host loopback
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -I Sources -framework Foundation -framework CoreServices Tests/host_probe_native_tests.m Sources/Network/LGHostProbe.m Sources/ThirdParty/SimplePing.m -o "$RUNNER_TEMP/host-probe-tests"
+          "$RUNNER_TEMP/host-probe-tests"
+      - name: Verify private enrollment file decoding
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/enrollment_native_tests.m Sources/RouterManagement/LGEnrollment.m Sources/RouterManagement/LGEndpoint.m -o "$RUNNER_TEMP/enrollment-tests"
+          "$RUNNER_TEMP/enrollment-tests"
       - name: Test native device state reducer
         run: |
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/model_tests.m Sources/Devices/LGDevice.m -o "$RUNNER_TEMP/model-tests"
           "$RUNNER_TEMP/model-tests"
       - name: Test native network snapshots and sanitized diagnostics
         run: |
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/network_model_tests.m Sources/Network/LGScanSnapshot.m Sources/Network/LGBonjourInventory.m Sources/Network/LGServiceEvidence.m Sources/Network/LGIdentity.c Sources/Devices/LGDevice.m Sources/Diagnostics/LGDiagnostics.m -o "$RUNNER_TEMP/network-model-tests"
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/network_model_tests.m Sources/Network/LGAuthorizedInventory.m Sources/Network/LGScanSnapshot.m Sources/Network/LGBonjourInventory.m Sources/Network/LGServiceEvidence.m Sources/Network/LGIdentity.c Sources/Devices/LGDevice.m Sources/Diagnostics/LGDiagnostics.m -o "$RUNNER_TEMP/network-model-tests"
           "$RUNNER_TEMP/network-model-tests"
       - name: Test actual staged scan pipeline with owned synthetic transports
         run: |
@@ -110,6 +122,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Verify published HTTPS repository
         env:
-          EXPECTED_VERSION: 0.5.1-beta.1
+          EXPECTED_VERSION: 0.6.0-beta.1
           EXPECTED_COMMIT: ${{ github.sha }}
         run: python3 Scripts/verify_repository.py https://pt94dat.github.io/wifikill-ios/

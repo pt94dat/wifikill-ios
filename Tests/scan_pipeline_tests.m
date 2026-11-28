@@ -30,7 +30,7 @@ static double now(void){return NSProcessInfo.processInfo.systemUptime;}
 - (void)collectWithWindowMS:(NSUInteger)window completion:(void(^)(NSDictionary<NSString*,NSDictionary*>*))completion{(void)window;self.stopped=NO;dispatch_after(dispatch_time(DISPATCH_TIME_NOW,300*NSEC_PER_MSEC),dispatch_get_main_queue(),^{if(self.stopped)return;self.onCancel=nil;completion(@{@"192.0.2.9":@{@"name":@"Owned service-only fixture",@"service":@"_languard-test._tcp."}});});}
 - (void)cancel{self.stopped=YES;void(^done)(void)=self.onCancel;self.onCancel=nil;if(done)done();}
 @end
-int lg_probe_detail(const char *ip,unsigned timeout,double *latency,int *evidence){(void)timeout;*latency=1;*evidence=!strcmp(ip,"192.0.2.2")?1:0;return *evidence==1;}
+int lg_discover_detail(const char *ip,unsigned timeout,double *latency,int *evidence,int *icmp_error){(void)timeout;*icmp_error=0;*latency=1;*evidence=!strcmp(ip,"192.0.2.2")?1:0;return *evidence==1;}
 size_t lg_neighbors(const LGNetwork *n,LGNeighbor *out,size_t capacity,unsigned *rejected){(void)n;(void)out;(void)capacity;*rejected=0;return 0;}
 LGNeighborStats lg_neighbor_stats(void){LGNeighborStats s={0};s.view=3;return s;}
 LGDNSOutcome lg_hostname_controlled(const char *ip,unsigned iface,char *out,size_t capacity,const LGDNSControl *control,LGDNSMetrics *metrics){(void)ip;(void)iface;memset(metrics,0,sizeof(*metrics));double began=now();while(now()-began<.65){if(atomic_load(&nbnsActive))atomic_store(&dnsSawNBNS,1);if(control->cancelled&&control->cancelled(control->context)){metrics->cleaned=1;return LGDNSCancelled;}struct timespec t={0,20000000};nanosleep(&t,NULL);}snprintf(out,capacity,"owned-ptr.local");metrics->elapsed_ms=(now()-began)*1000;metrics->soft_exceeded=1;metrics->cleaned=1;return LGDNSResolved;}

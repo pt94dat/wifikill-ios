@@ -1,5 +1,6 @@
 #import "LGScanner.h"
 #import "LGIdentity.h"
+#import "LGHostProbe.h"
 #import "LGNetBIOS.h"
 #import "LGScanSnapshot.h"
 #import "LGServiceEvidence.h"
@@ -25,12 +26,12 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
  dispatch_async(self.engineQueue,^{@autoreleasepool{
   unsigned base=0,hosts=0;
   if(!start||!lg_subnet_hosts(start.network.address,start.network.netmask,&base,&hosts)){dispatch_async(dispatch_get_main_queue(),^{if(self.generation==generation){self.enriching=NO;self.metrics=@{};self.diagnostics=@{@"scanID":scanID,@"lifecycle":start?@"unsupportedSubnet":@"noNetwork",@"snapshotCommitted":@NO};completion(@[],start?@"Unsupported subnet size":@"No local Wi-Fi IPv4 connection");}});return;}
-  NSOperationQueue *queue=[NSOperationQueue new];queue.maxConcurrentOperationCount=12;self.workQueue=queue;NSMutableDictionary<NSString*,LGDevice*> *found=[NSMutableDictionary new];
+  NSOperationQueue *queue=[NSOperationQueue new];queue.maxConcurrentOperationCount=12;self.workQueue=queue;NSMutableDictionary<NSString*,LGDevice*> *found=[NSMutableDictionary new];__block NSUInteger icmpFailures=0;
   for(unsigned h=1;h<=hosts;h++){
    if(self.generation!=generation)break;
    [queue addOperationWithBlock:^{@autoreleasepool{
     if(self.generation!=generation)return;struct in_addr address={htonl(base+h)};char ip[16];inet_ntop(AF_INET,&address,ip,16);BOOL local=base+h==start.network.address;double ms=0;int evidence=local?3:0;
-    if(!local&&!lg_probe_detail(ip,300,&ms,&evidence))return;LGDevice *d=[LGDevice new];d.ip=@(ip);d.reachability=local?LGReachabilityHost:LGReachabilityResponded;d.lastSeen=NSDate.date;d.probeEvidence=evidence;d.latencyMS=ms;if(local)d.name=@"This iPhone";[d recordAttribute:@"Address" value:d.ip source:local?@"Local interface":@"TCP/443 response" confidence:local?@"Confirmed local interface":@"Address observation · identity unverified" scope:start.networkKey limitations:local?@"Current local interface":@"Refusal can originate from an intermediary; Internet access unverified"];
+    int icmpError=0;BOOL responded=local||lg_discover_detail(ip,300,&ms,&evidence,&icmpError);if(icmpError){@synchronized(found){icmpFailures++;}}if(!responded)return;LGDevice *d=[LGDevice new];d.ip=@(ip);d.reachability=local?LGReachabilityHost:LGReachabilityResponded;d.lastSeen=NSDate.date;d.probeEvidence=evidence;d.latencyMS=ms;if(local)d.name=@"This iPhone";[d recordAttribute:@"Address" value:d.ip source:local?@"Local interface":(evidence==4?@"ICMP echo response":@"TCP/443 response") confidence:local?@"Confirmed local interface":@"Address observation · identity unverified" scope:start.networkKey limitations:local?@"Current local interface":@"Refusal can originate from an intermediary; Internet access unverified"];
     @synchronized(found){found[d.ip]=d;}
    }}];
   }
@@ -88,8 +89,8 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
    NSDictionary *finalCounts=[LGScanSnapshot counts:found.allValues];NSMutableDictionary *metrics=[finalCounts mutableCopy];metrics[@"rejectedNeighbors"]=@(rejected);metrics[@"probed"]=@(hosts);metrics[@"neighborView"]=@(ns.view);metrics[@"scanID"]=scanID;metrics[@"revision"]=@2;
     NSMutableArray *records=[NSMutableArray new];for(LGDevice *d in found.allValues)if(d.lastSeen)[records addObject:@{@"ip":d.ip,@"seen":@(d.lastSeen.timeIntervalSince1970)}];[LGStore saveObservations:[LGScanSnapshot history:records now:NSDate.date.timeIntervalSince1970 address:network.address mask:network.netmask] network:start.networkKey];
     mach_task_basic_info_data_t memory={0};mach_msg_type_number_t size=MACH_TASK_BASIC_INFO_COUNT;kern_return_t memoryCode=task_info(mach_task_self(),MACH_TASK_BASIC_INFO,(task_info_t)&memory,&size);
-    NSMutableDictionary *dnsReport=[dnsLifecycle mutableCopy];dnsReport[@"outcomes"]=dns.copy;dnsReport[@"apiCodes"]=dnsCodes.copy;self.enriching=NO;self.context=start;self.metrics=metrics.copy;self.diagnostics=@{@"scanID":scanID,@"generation":@(generation),@"lifecycle":@"completed",@"revision":@2,@"snapshotCommitted":@YES,@"counts":finalCounts,@"neighbor":neighborReport,@"dns":dnsReport.copy,@"netbiosReplies":@(nbReplies),@"bonjour":bonjourStats,@"bonjourMatchedAddresses":@(matched),@"history":@{@"input":@(stored.count),@"retainedUnique":@(history.count),@"filteredOrDuplicate":@(stored.count-history.count)},@"timingMS":@{@"initial":@(initialPublishedMS),@"probes":@((probesEnded-began)*1000),@"identity":@((namesEnded-probesEnded)*1000),@"total":@((NSProcessInfo.processInfo.systemUptime-began)*1000),@"processCPU":@(cpu_ms()-cpu)},@"residentBytes":@(memoryCode==KERN_SUCCESS?memory.resident_size:0),@"memoryAPICode":@(memoryCode),@"budgets":@{@"workers":@12,@"dnsActiveLimit":@64,@"tcpMS":@300,@"ptrMS":@3000,@"ptrSoftMS":@400,@"nbnsMS":@150,@"bonjourMS":@3000}};
-    self.bonjour=nil;completion(found.allValues,@"One committed snapshot. Responded = accepted + refused + local. History is not current connectivity; network names are self-reported.");
+    NSMutableDictionary *dnsReport=[dnsLifecycle mutableCopy];dnsReport[@"outcomes"]=dns.copy;dnsReport[@"apiCodes"]=dnsCodes.copy;self.enriching=NO;self.context=start;self.metrics=metrics.copy;self.diagnostics=@{@"scanID":scanID,@"generation":@(generation),@"lifecycle":@"completed",@"revision":@2,@"snapshotCommitted":@YES,@"counts":finalCounts,@"icmpFailures":@(icmpFailures),@"neighbor":neighborReport,@"dns":dnsReport.copy,@"netbiosReplies":@(nbReplies),@"bonjour":bonjourStats,@"bonjourMatchedAddresses":@(matched),@"history":@{@"input":@(stored.count),@"retainedUnique":@(history.count),@"filteredOrDuplicate":@(stored.count-history.count)},@"timingMS":@{@"initial":@(initialPublishedMS),@"probes":@((probesEnded-began)*1000),@"identity":@((namesEnded-probesEnded)*1000),@"total":@((NSProcessInfo.processInfo.systemUptime-began)*1000),@"processCPU":@(cpu_ms()-cpu)},@"residentBytes":@(memoryCode==KERN_SUCCESS?memory.resident_size:0),@"memoryAPICode":@(memoryCode),@"budgets":@{@"workers":@12,@"dnsActiveLimit":@64,@"tcpMS":@300,@"ptrMS":@3000,@"ptrSoftMS":@400,@"nbnsMS":@150,@"bonjourMS":@3000}};
+    self.bonjour=nil;completion(found.allValues,@"One committed snapshot. Responded = accepted + refused + ICMP + local. History is not current connectivity; network names are self-reported.");
   });
  }});
 }

@@ -1,12 +1,13 @@
 #import "LGScanSnapshot.h"
 #import <arpa/inet.h>
+#import "LGIdentity.h"
 @implementation LGScanSnapshot
 + (NSDictionary*)counts:(NSArray<LGDevice*>*)devices{
  NSMutableDictionary *unique=[NSMutableDictionary new];NSUInteger duplicates=0;
  for(LGDevice *d in devices){if(unique[d.ip]){duplicates++;continue;}unique[d.ip]=d;}
- NSUInteger responded=0,cached=0,unknown=0,accepted=0,refused=0,local=0,other=0,advertised=0;
- for(LGDevice *d in unique.allValues){if(d.reachability>=LGReachabilityResponded){responded++;if(d.probeEvidence==1)accepted++;else if(d.probeEvidence==2)refused++;else if(d.probeEvidence==3)local++;else other++;}else if(d.reachability==LGReachabilityCached)cached++;else{unknown++;if(d.serviceEvidence.length)advertised++;}}
- return @{@"discovered":@(unique.count),@"reachable":@(responded),@"cached":@(cached),@"unknown":@(unknown),@"tcpAccepted":@(accepted),@"tcpRefused":@(refused),@"local":@(local),@"otherResponseEvidence":@(other),@"advertisedOnly":@(advertised),@"duplicateRows":@(duplicates),@"reconciled":@(unique.count==responded+cached+unknown&&responded==accepted+refused+local&&duplicates==0)};
+ NSUInteger responded=0,cached=0,unknown=0,accepted=0,refused=0,local=0,other=0,icmp=0,macs=0,advertised=0;
+ for(LGDevice *d in unique.allValues){char mac[18];if(lg_normalize_mac(d.mac.UTF8String,mac))macs++;if(d.reachability>=LGReachabilityResponded){responded++;if(d.probeEvidence==1)accepted++;else if(d.probeEvidence==2)refused++;else if(d.probeEvidence==3)local++;else if(d.probeEvidence==4)icmp++;else other++;}else if(d.reachability==LGReachabilityCached)cached++;else{unknown++;if(d.serviceEvidence.length)advertised++;}}
+ return @{@"discovered":@(unique.count),@"macAvailable":@(macs),@"reachable":@(responded),@"cached":@(cached),@"unknown":@(unknown),@"tcpAccepted":@(accepted),@"tcpRefused":@(refused),@"icmpResponded":@(icmp),@"local":@(local),@"otherResponseEvidence":@(other),@"advertisedOnly":@(advertised),@"duplicateRows":@(duplicates),@"reconciled":@(unique.count==responded+cached+unknown&&responded==accepted+refused+local+icmp&&duplicates==0)};
 }
 + (NSArray<NSDictionary*>*)history:(NSArray*)records now:(NSTimeInterval)now address:(uint32_t)address mask:(uint32_t)mask{
  NSMutableDictionary *latest=[NSMutableDictionary new];uint32_t base=address&mask;

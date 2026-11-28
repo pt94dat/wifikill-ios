@@ -11,7 +11,7 @@
  self.card=[UIView new];self.card.backgroundColor=LGStyle.surface;self.card.layer.cornerRadius=14;
  self.glyph=[UILabel new];self.glyph.font=[UIFont systemFontOfSize:25 weight:UIFontWeightLight];self.glyph.textAlignment=NSTextAlignmentCenter;
  self.nameLabel=[UILabel new];self.nameLabel.font=[UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];self.nameLabel.textColor=UIColor.whiteColor;
- self.addressLabel=[UILabel new];self.addressLabel.font=[UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightRegular];self.addressLabel.textColor=LGStyle.muted;
+ self.addressLabel=[UILabel new];self.addressLabel.font=[UIFont monospacedDigitSystemFontOfSize:12 weight:UIFontWeightRegular];self.addressLabel.textColor=LGStyle.muted;self.addressLabel.numberOfLines=2;
  self.stateLabel=[UILabel new];self.stateLabel.font=[UIFont systemFontOfSize:11 weight:UIFontWeightMedium];self.stateLabel.numberOfLines=2;
  self.actionButton=[UIButton buttonWithType:UIButtonTypeSystem];self.actionButton.layer.cornerRadius=10;self.actionButton.titleLabel.font=[UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
  [self.contentView addSubview:self.card];for(UIView *v in @[self.glyph,self.nameLabel,self.addressLabel,self.stateLabel,self.actionButton]){[self.card addSubview:v];v.translatesAutoresizingMaskIntoConstraints=NO;}self.card.translatesAutoresizingMaskIntoConstraints=NO;
@@ -25,10 +25,10 @@
  }return self;
 }
 - (void)render:(LGDevice*)d available:(BOOL)available{
- self.nameLabel.text=[NSString stringWithFormat:@"%@%@",d.favorite?@"★ ":@"",d.displayName];self.addressLabel.text=[d.displayName isEqual:d.ip]?(d.typeHint.length?d.typeHint:@"Identity unknown"):d.ip;self.stateLabel.text=d.status;
+ self.nameLabel.text=[NSString stringWithFormat:@"%@%@",d.favorite?@"★ ":@"",d.displayName];self.addressLabel.text=[d.displayName isEqual:d.ip]?(d.typeHint.length?d.typeHint:@"Identity unknown"):d.ip;if(d.mac.length)self.addressLabel.text=[NSString stringWithFormat:@"%@\n%@",d.ip,d.mac];self.stateLabel.text=d.control==LGControlNone&&d.inventoryAllocationOnly?@"DHCP inventory · online status unknown":d.status;
  UIColor *color=d.pending?LGStyle.amber:(d.restricted?LGStyle.red:(d.reachability>=LGReachabilityResponded?LGStyle.accent:LGStyle.muted));if(d.control==LGControlUnverified)color=LGStyle.amber;
  self.stateLabel.textColor=color;self.glyph.textColor=color;self.glyph.text=d.systemProtected?@"◇":@"◉";
- NSString *action=d.pending?@"Working…":(d.protectedDevice?@"Protected":(d.routerRulePresent?@"Unkill":@"Kill"));[self.actionButton setTitle:action forState:UIControlStateNormal];self.actionButton.hidden=!available&&!d.protectedDevice&&!d.pending;self.actionButton.enabled=available&&!d.pending&&!d.protectedDevice&&d.mac.length;
+ NSString *action=d.pending?@"Working…":(d.protectedDevice?@"Protected":(d.routerRulePresent?@"Unkill":((d.inventoryAllocationOnly||d.macSelfReported)?@"Unverified":(d.mac.length?@"Kill":@"No ID"))));[self.actionButton setTitle:action forState:UIControlStateNormal];self.actionButton.hidden=!available&&!d.protectedDevice&&!d.pending;self.actionButton.enabled=available&&!d.pending&&!d.protectedDevice&&d.mac.length&&(!(d.inventoryAllocationOnly||d.macSelfReported)||d.routerRulePresent);
  self.actionButton.backgroundColor=self.actionButton.enabled?[LGStyle.accent colorWithAlphaComponent:.12]:[UIColor colorWithWhite:1 alpha:.035];[self.actionButton setTitleColor:LGStyle.accent forState:UIControlStateNormal];[self.actionButton setTitleColor:LGStyle.muted forState:UIControlStateDisabled];
  self.actionButton.accessibilityLabel=[NSString stringWithFormat:@"%@ %@",action,d.displayName];
 }

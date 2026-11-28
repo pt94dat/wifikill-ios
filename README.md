@@ -1,6 +1,6 @@
 # LanGuard — native iOS network management
 
-Current development release: **0.5.1-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
+Current development release: **0.6.0-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
 
 ## Update
 
@@ -36,7 +36,7 @@ Setup requires an administrator-controlled compatible gateway, valid TLS, an enr
 
 Restrictions expire after five minutes independently of app/server termination. Restore All changes only the adapter-owned LanGuard set. An interrupted-operation journal triggers readback on return. Removing the phone app does not directly remove remote rules; restore first or wait for expiry. Administrators can run `nft flush set inet languard blocked` on the enrolled gateway.
 
-CI retains up to five prior validated public packages. An invalid build or failed retention/validation never deploys over a working release. Previously published version filenames are immutable; a correction after publication needs a new version.
+CI retains every prior validated public package (bounded manifest validation refuses more than20 entries rather than silently deleting history). An invalid build or failed retention/validation never deploys over a working release. Previously published version filenames are immutable; a correction after publication needs a new version.
 
 ## Build and verification
 

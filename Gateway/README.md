@@ -45,3 +45,19 @@ The service bounds concurrent TLS handshakes; an idle handshake does not block t
 To uninstall: `sudo systemctl disable --now languard-gateway`; remove `/etc/systemd/system/languard-gateway.service`, `/etc/avahi/services/languard-gateway.service` if installed, and `/opt/languard-gateway`; run `sudo systemctl daemon-reload`. Remove credentials/config only when no longer needed. Delete only `inet languard` if it remains.
 
 The enforced hook covers LAN-to-WAN forwarded packets from the selected MAC. Tests cover client-initiated sessions; ongoing unsolicited inbound traffic and full bidirectional isolation are not independently established.
+
+## Optional authorized DHCP inventory (0.6)
+
+An administrator can add `dnsmasq_lease_files` (a list of absolute, readable lease file paths) and `inventory_networks` (explicit IPv4 LAN CIDRs) to the existing service config. No router brand is assumed, and no filesystem paths are accepted from network requests. The source is the documented dnsmasq expiry/MAC/IP/hostname/client-id format; expiry must be Unix time, with0 meaning an infinite allocation. Files are bounded to1MiB/4096rows each, at most8 files. Expired, malformed, placeholder, multicast, out-of-scope and conflicting mappings are excluded. Relative-time leases from broken-RTC builds are not supported by this source.
+
+`GET /v1/devices` returns authenticated neighbor and optional DHCP observations. A DHCP allocation is not online evidence. Restriction requests still require the current kernel neighbor mapping on a configured LAN interface. The phone disables new Kill for allocation-only identities; restoration of an existing owned rule remains available. No DHCP daemon is installed by the production adapter.
+
+## Private enrollment file
+
+After configuring trusted HTTPS and the management token, an administrator can run:
+
+```sh
+python3 Gateway/export_enrollment.py --config /etc/languard/config.json --endpoint https://YOUR-TRUSTED-GATEWAY:8443 --output /secure/path/languard-enrollment.json
+```
+
+The helper creates a new file with mode0600, refuses overwrite, and does not print or transmit its contents. Transfer it privately to the authorized iPhone. In LanGuard Settings choose **Import authorized enrollment file**, review the endpoint, then Save. Import itself sends nothing and writes nothing to Keychain. It does not install a certificate, bypass TLS trust, grant router privileges, or make an unsupported stock router compatible. Treat the exported file like the token it contains; do not upload it to support reports or public repositories.
