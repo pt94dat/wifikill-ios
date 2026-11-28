@@ -104,3 +104,5 @@ Run46098939210: transactionDHCP thật đã tạo lease, nhưng assertion record
 ### Review bổ sung trước phát hành
 
 Không dùng model đã merge inventory làm baseline cho lần refresh sau: native merger clone rawscan; controller giữ scanDevices và reject callback khácgeneration/đangscan/đangmutation. Inventory lỗi hoặc hết quyền trở về rawobservations, reset combinedcounts và cập nhật detailđangmở, không giữ MAC lease cũ như dữ liệu hiện hành. DHCPfile khôngregular bị từ chối nonblocking. Enrollmentorigin kiểm tra cả portrange. Cần xem kết quả CI của đúng commit sau các thay đổi này, không dùng test của commit trước làm bằng chứng đã hoàn tất.
+
+Review association của component reuse: SimplePing đã kiểm tra checksum/identifier/sequence nhưng wrapper còn phải đảm bảo response thuộc đúng target trong scanner nhiều host. Bổ sung đối chiếu IPv4source và payloadnonce riêng từng probe ở callback sau validation của library; controlled callback fixtures từ chối source/payload sai, hostecho thật vẫn là gate. Inventory source có fieldsource không được hỗ trợ bị bỏ qua, thay vì tự coi nó là neighbor. Legacy neighbor rows không có source vẫn tương thích.

@@ -5,7 +5,7 @@
 + (NSArray<LGDevice*>*)mergeRows:(NSArray*)rows devices:(NSArray<LGDevice*>*)devices network:(LGNetwork)network scope:(NSString*)scope now:(NSTimeInterval)now{
  if(![rows isKindOfClass:NSArray.class]||rows.count>2048||!scope.length)return devices;
  NSMutableDictionary *mapping=[NSMutableDictionary new],*valid=[NSMutableDictionary new];NSMutableSet *conflicts=[NSMutableSet new];uint32_t base=network.address&network.netmask;
- for(id raw in rows){if(![raw isKindOfClass:NSDictionary.class])continue;NSString *ip=raw[@"dst"],*mac=raw[@"lladdr"];char normalized[18];struct in_addr address;
+ for(id raw in rows){if(![raw isKindOfClass:NSDictionary.class])continue;id source=raw[@"source"];if(source&&![@[@"neighbor",@"dnsmasq"] containsObject:source])continue;NSString *ip=raw[@"dst"],*mac=raw[@"lladdr"];char normalized[18];struct in_addr address;
   if(![ip isKindOfClass:NSString.class]||inet_pton(AF_INET,ip.UTF8String,&address)!=1||![mac isKindOfClass:NSString.class]||!lg_normalize_mac(mac.UTF8String,normalized))continue;
   uint32_t host=ntohl(address.s_addr);if((host&network.netmask)!=base||host==base||host==(base|~network.netmask))continue;
   id expiry=raw[@"expires_at"];if(expiry&&(![expiry isKindOfClass:NSNumber.class]||[expiry doubleValue]<0||([expiry doubleValue]>0&&[expiry doubleValue]<=now)))continue;
