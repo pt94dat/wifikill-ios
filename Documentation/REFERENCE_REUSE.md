@@ -100,3 +100,7 @@ Nếu phát hành: cập nhật một lần từ Sileo cũ, scan mạng mình đ
 ### Gate đầu tiên, chưa phát hành
 
 Run46098939210: transactionDHCP thật đã tạo lease, nhưng assertion record API chưa đạt; build bịskip đúng gate. Chưa kết luận root cause khi chưa có actualrecord. Lab bổ sung diagnostic chỉ cho fixture sở hữu, và chủ động xóa neighbor có thể được DHCP học để tạo đối chứng allocation-only. Các native checks được tách job độc lập, tránh một lỗi lab che kết quả tương thích library. Lease source cũng từ chối non-regularfile bằng fdnonblocking/fstat, không để FIFO cấu hình sai treo worker.
+
+### Review bổ sung trước phát hành
+
+Không dùng model đã merge inventory làm baseline cho lần refresh sau: native merger clone rawscan; controller giữ scanDevices và reject callback khácgeneration/đangscan/đangmutation. Inventory lỗi hoặc hết quyền trở về rawobservations, reset combinedcounts và cập nhật detailđangmở, không giữ MAC lease cũ như dữ liệu hiện hành. DHCPfile khôngregular bị từ chối nonblocking. Enrollmentorigin kiểm tra cả portrange. Cần xem kết quả CI của đúng commit sau các thay đổi này, không dùng test của commit trước làm bằng chứng đã hoàn tất.

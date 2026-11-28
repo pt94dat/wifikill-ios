@@ -10,6 +10,8 @@ def export(config, endpoint, destination):
     url=urlsplit(endpoint)
     if url.scheme!='https' or not url.hostname or url.username or url.password or url.path not in ('','/') or url.query or url.fragment:
         raise ValueError('Use a trusted HTTPS origin only')
+    if url.port is not None and not 1<=url.port<=65535:
+        raise ValueError('Invalid HTTPS port')
     token=Path(config['token_file']).read_text().strip()
     if not 32<=len(token)<=256 or any(not 33<=ord(c)<=126 for c in token):
         raise ValueError('Invalid enrollment token')

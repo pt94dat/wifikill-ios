@@ -105,14 +105,16 @@
 - (void)refreshAdapter{
  if(self.scanner.enriching||self.pending.count||self.restoringAll)return;NSUInteger generation=self.scanner.generation;
  NSUInteger epoch=self.contextEpoch;NSString *endpoint=self.gateway.endpoint;
- if(!self.gateway.supported){self.devices=self.scanDevices?:@[];self.inventoryCounts=nil;for(LGDevice *d in self.devices)d.restrictionKnown=NO;[self filterChanged];return;}
+ if(!self.gateway.supported){self.devices=self.scanDevices?:@[];self.inventoryCounts=nil;for(LGDevice *d in self.devices)d.restrictionKnown=NO;NSMutableDictionary *metrics=[self.scanner.metrics mutableCopy]?:[NSMutableDictionary new];[metrics addEntriesFromDictionary:[LGScanSnapshot counts:self.devices]];self.scanner.metrics=metrics;[self filterChanged];return;}
  [self.gateway request:@"GET" path:@"/v1/devices" body:nil done:^(NSDictionary *r,NSError *error){
   if(generation!=self.scanner.generation||self.scanner.enriching||self.pending.count||self.restoringAll||epoch!=self.contextEpoch||![endpoint isEqual:self.gateway.endpoint]||![self contextIsCurrent])return;
   if(!error&&[r[@"devices"] isKindOfClass:NSArray.class]){
    self.devices=[LGAuthorizedInventory mergeRows:r[@"devices"] devices:self.scanDevices?:@[] network:self.context.network scope:self.context.networkKey now:NSDate.date.timeIntervalSince1970];
    for(LGDevice *d in self.devices)[self loadPreferences:d];NSMutableDictionary *metrics=[self.scanner.metrics mutableCopy]?:[NSMutableDictionary new];[metrics addEntriesFromDictionary:[LGScanSnapshot counts:self.devices]];self.scanner.metrics=metrics;self.inventoryCounts=[LGScanSnapshot counts:self.devices];
    [self filterChanged];
-  }[self refreshRestrictions];
+  }else if(error){self.devices=self.scanDevices?:@[];self.inventoryCounts=nil;NSMutableDictionary *metrics=[self.scanner.metrics mutableCopy]?:[NSMutableDictionary new];[metrics addEntriesFromDictionary:[LGScanSnapshot counts:self.devices]];self.scanner.metrics=metrics;self.scanExplanation=@"Authorized inventory unavailable; independent scan observations retained";[self filterChanged];}
+  UIViewController *top=self.navigationController.topViewController;if([top isKindOfClass:LGDeviceDetailsController.class]){LGDeviceDetailsController *details=(id)top;LGDevice *current=nil;for(LGDevice *d in self.devices)if([d.ip isEqual:details.device.ip]){current=d;break;}if(!current){current=[LGDevice new];current.ip=details.device.ip;}details.device=current;details.authorizationStatus=self.gateway.authorizationStatus;[details.tableView reloadData];}
+  [self refreshRestrictions];
  }];
 }
 - (void)refreshRestrictions{[self refreshRestrictionsCompleting:nil];}
