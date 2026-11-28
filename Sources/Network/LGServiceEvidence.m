@@ -14,6 +14,7 @@
 }
 
 + (NSString*)serviceType:(NSString*)record{
+ record=record.lowercaseString;if([record hasSuffix:@"."])record=[record substringToIndex:record.length-1];
  if([record hasSuffix:@".local"]){record=[record substringToIndex:record.length-6];}if(![record hasSuffix:@"."])record=[record stringByAppendingString:@"."];
  static NSRegularExpression *pattern;static dispatch_once_t once;dispatch_once(&once,^{pattern=[NSRegularExpression regularExpressionWithPattern:@"^_[A-Za-z0-9-]{1,63}\\._(tcp|udp)\\.$" options:0 error:nil];});
  return record.length<80&&[pattern numberOfMatchesInString:record options:0 range:NSMakeRange(0,record.length)]==1?record:nil;

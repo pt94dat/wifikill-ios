@@ -10,5 +10,6 @@ int main(void){
  assert(lg_subnet_hosts(0xc0000201,0xfffffffc,&base,&count)&&count==2);assert(!lg_subnet_hosts(0x0a000001,0xffff0000,&base,&count));assert(!lg_subnet_hosts(0x0a000001,0xff00ff00,&base,&count));assert(!lg_subnet_hosts(0x0a000001,0xffffffff,&base,&count));
  char name[64];unsigned char valid[]={4,'t','e','s','t',5,'l','o','c','a','l',0};assert(lg_ptr_name(valid,sizeof(valid),name,sizeof(name)));assert(!strcmp(name,"test.local"));assert(!lg_ptr_name(valid,3,name,sizeof(name)));assert(!lg_ptr_name(valid,sizeof(valid),name,4));
  unsigned char pointer[]={0xc0,1};assert(!lg_ptr_name(pointer,sizeof(pointer),name,sizeof(name)));unsigned char malicious[]={3,'a','\n','b',0};assert(!lg_ptr_name(malicious,sizeof(malicious),name,sizeof(name)));
+ unsigned char trailing[]={1,'a',0,1};assert(!lg_ptr_name(trailing,sizeof(trailing),name,sizeof(name)));assert(!name[0]);
  puts("Identity, subnet and bounded DNS-label regression assertions passed");return 0;
 }

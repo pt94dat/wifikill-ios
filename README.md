@@ -1,6 +1,6 @@
 # LanGuard — native iOS network management
 
-Current development release: **0.5.0-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
+Current development release: **0.5.1-beta.1**. Same package ID and Sileo source as the prior beta. This is an engineering beta with conditional authorized access control, not complete NetCut equivalence.
 
 ## Update
 

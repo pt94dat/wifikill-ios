@@ -32,6 +32,8 @@ int lg_probe_detail(const char *ip,unsigned timeout,double *latency,int *evidenc
 size_t lg_neighbors(const LGNetwork *n,LGNeighbor *out,size_t capacity,unsigned *rejected){(void)n;(void)out;(void)capacity;*rejected=0;return 0;}
 LGNeighborStats lg_neighbor_stats(void){LGNeighborStats s={0};s.view=3;return s;}
 LGDNSOutcome lg_hostname_controlled(const char *ip,unsigned iface,char *out,size_t capacity,const LGDNSControl *control,LGDNSMetrics *metrics){(void)ip;(void)iface;memset(metrics,0,sizeof(*metrics));double began=now();while(now()-began<.65){if(control->cancelled&&control->cancelled(control->context)){metrics->cleaned=1;return LGDNSCancelled;}struct timespec t={0,20000000};nanosleep(&t,NULL);}snprintf(out,capacity,"owned-ptr.local");metrics->elapsed_ms=(now()-began)*1000;metrics->soft_exceeded=1;metrics->cleaned=1;return LGDNSResolved;}
+void lg_hostnames_controlled(LGDNSRequest *requests,size_t count,unsigned interface_index,const LGDNSControl *control){for(size_t i=0;i<count;i++)requests[i].outcome=lg_hostname_controlled(requests[i].ip,interface_index,requests[i].name,sizeof(requests[i].name),control,&requests[i].metrics);}
+
 int lg_nbns_query(const char *ip,unsigned ms,char name[64],char mac[18]){(void)ip;(void)ms;name[0]=0;mac[0]=0;return 0;}
 static void spin(double duration){NSDate *end=[NSDate dateWithTimeIntervalSinceNow:duration];while(end.timeIntervalSinceNow>0)[NSRunLoop.currentRunLoop runUntilDate:[NSDate dateWithTimeIntervalSinceNow:.01]];}
 int main(void){@autoreleasepool{

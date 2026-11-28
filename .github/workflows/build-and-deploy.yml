@@ -1,7 +1,7 @@
 name: Build native ARM64 and publish validated APT repository
 on:
   push:
-    branches: [main, engineering-audit, phase4-engine, phase5-identity]
+    branches: [main, engineering-audit, phase4-engine, phase5-identity, fix/dns-intermediate-negative-20261128]
   workflow_dispatch:
 permissions:
   contents: read
@@ -110,6 +110,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Verify published HTTPS repository
         env:
-          EXPECTED_VERSION: 0.5.0-beta.1
+          EXPECTED_VERSION: 0.5.1-beta.1
           EXPECTED_COMMIT: ${{ github.sha }}
         run: python3 Scripts/verify_repository.py https://pt94dat.github.io/wifikill-ios/

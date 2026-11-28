@@ -13,6 +13,8 @@ size_t lg_neighbors(const LGNetwork *net,LGNeighbor *out,size_t capacity,unsigne
 typedef enum { LGDNSNotAttempted,LGDNSResolved,LGDNSDeadline,LGDNSNoRecord,LGDNSFailure,LGDNSMalformed,LGDNSCancelled } LGDNSOutcome;
 typedef struct {unsigned soft_ms,hard_ms;int (*cancelled)(void*);void *context;} LGDNSControl;
 typedef struct {int api_error,soft_exceeded,cleaned;double elapsed_ms;} LGDNSMetrics;
+typedef struct {const char *ip;char name[256];LGDNSOutcome outcome;LGDNSMetrics metrics;} LGDNSRequest;
+void lg_hostnames_controlled(LGDNSRequest *requests,size_t count,unsigned interface_index,const LGDNSControl *control);
 LGDNSOutcome lg_hostname_controlled(const char *ip,unsigned interface_index,char *out,size_t capacity,const LGDNSControl *control,LGDNSMetrics *metrics);
 LGDNSOutcome lg_hostname_detail(const char *ip,unsigned interface_index,char *out,size_t capacity,unsigned timeout_ms,int *api_error);
 int lg_hostname(const char *ip,unsigned interface_index,char *out,size_t capacity,unsigned timeout_ms);

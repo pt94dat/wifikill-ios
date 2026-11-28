@@ -17,3 +17,6 @@ class NetworkEngineTests(unittest.TestCase):
 
     def test_late_resolution_budget_matrix_and_cancellation(self):
         self.run_c('resolver_timing_tests.c',['Sources/Network/LGResolver.c','Sources/Network/LGIdentity.c'],['-DLG_RESOLVER_TEST','-pthread'])
+
+    def test_bounded_batch_resolution_and_coverage(self):
+        self.run_c("resolver_batch_tests.c",["Sources/Network/LGResolver.c","Sources/Network/LGIdentity.c"],["-DLG_RESOLVER_TEST"])

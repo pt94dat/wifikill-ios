@@ -14,7 +14,7 @@ int lg_subnet_hosts(unsigned address,unsigned mask,unsigned *base,unsigned *coun
 }
 int lg_ptr_name(const unsigned char *data,size_t length,char *out,size_t capacity){
  if(!capacity)return 0;
- out[0]=0;size_t pos=0,used=0;
- while(pos<length){unsigned label=data[pos++];if(!label){if(!used)return 0;out[used]=0;return 1;}if(label>63||pos+label>length||used+label+2>capacity){out[0]=0;return 0;}if(used)out[used++]='.';for(unsigned i=0;i<label;i++){unsigned char c=data[pos++];if(c<33||c>126||c=='.'){out[0]=0;return 0;}out[used++]=(char)c;}}
+ out[0]=0;if(!data||length>255)return 0;size_t pos=0,used=0;
+ while(pos<length){unsigned label=data[pos++];if(!label){if(!used||pos!=length){out[0]=0;return 0;}out[used]=0;return 1;}if(label>63||pos+label>length||used+label+2>capacity){out[0]=0;return 0;}if(used)out[used++]='.';for(unsigned i=0;i<label;i++){unsigned char c=data[pos++];if(c<33||c>126||c=='.'){out[0]=0;return 0;}out[used++]=(char)c;}}
  out[0]=0;return 0;
 }
