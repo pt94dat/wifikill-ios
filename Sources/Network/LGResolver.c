@@ -73,7 +73,7 @@ void lg_hostnames_controlled(LGDNSRequest *requests,size_t count,unsigned interf
   }
   if(stopped)break;
   if(clock_ms()>=deadline)continue;
-  for(unsigned s=0;s<slots&&next<count;s++)if(!refs[s]){
+  for(unsigned s=0;s<slots&&next<count&&clock_ms()<deadline;s++)if(!refs[s]){
    size_t i=next++;LGDNSRequest *request=&requests[i];struct in_addr addr;
    if(!request->ip||inet_pton(AF_INET,request->ip,&addr)!=1){request->outcome=LGDNSFailure;continue;}
    unsigned char *b=(void*)&addr;char reverse[80];snprintf(reverse,sizeof(reverse),"%u.%u.%u.%u.in-addr.arpa.",b[3],b[2],b[1],b[0]);

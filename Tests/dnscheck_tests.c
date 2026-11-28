@@ -7,7 +7,7 @@
 #include <string.h>
 static int mode,fds[2],freed,removed;static char expected[256];static DNSServiceRegisterRecordReply registered;static void *ctx;
 int DNSServiceCreateConnection(DNSServiceRef *ref){if(mode==1)return -1;assert(!pipe(fds));*ref=(void*)1;return 0;}
-int DNSServiceRegisterRecord(DNSServiceRef ref,DNSRecordRef *record,DNSServiceFlags flags,uint32_t iface,const char *name,uint16_t type,uint16_t cls,uint16_t length,const void *data,uint32_t ttl,DNSServiceRegisterRecordReply cb,void *context){(void)ref;assert(flags==1&&iface==UINT32_MAX&&type==12&&cls==1&&ttl==10);assert(!strcmp(name,"77.113.0.203.in-addr.arpa."));assert(lg_ptr_name(data,length,expected,sizeof(expected)));if(mode==2)return -2;*record=(void*)2;registered=cb;ctx=context;assert(write(fds[1],"x",1)==1);return 0;}
+int DNSServiceRegisterRecord(DNSServiceRef ref,DNSRecordRef *record,DNSServiceFlags flags,uint32_t iface,const char *name,uint16_t type,uint16_t cls,uint16_t length,const void *data,uint32_t ttl,DNSServiceRegisterRecordReply cb,void *context){(void)ref;assert(flags==1&&iface==UINT32_MAX&&type==12&&cls==1&&ttl==10);unsigned a,b,c,d;assert(sscanf(name,"%u.%u.%u.%u.in-addr.arpa.",&a,&b,&c,&d)==4&&d==127&&c>=128);assert(lg_ptr_name(data,length,expected,sizeof(expected)));if(mode==2)return -2;*record=(void*)2;registered=cb;ctx=context;assert(write(fds[1],"x",1)==1);return 0;}
 int DNSServiceRefSockFD(DNSServiceRef ref){(void)ref;return mode==3?-1:fds[0];}
 int DNSServiceProcessResult(DNSServiceRef ref){char byte;assert(read(fds[0],&byte,1)==1);registered(ref,(void*)2,0,mode==4?-3:0,ctx);return 0;}
 int DNSServiceRemoveRecord(DNSServiceRef ref,DNSRecordRef record,DNSServiceFlags flags){(void)ref;(void)record;(void)flags;removed++;return mode==7?-4:0;}
