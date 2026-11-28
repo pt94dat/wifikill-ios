@@ -58,7 +58,7 @@ jobs:
           "$RUNNER_TEMP/bonjour-native-tests"
       - name: Verify real host DNS-SD against a controlled local-only PTR record
         run: |
-          xcrun clang -Wall -Wextra -Werror -I Sources Tests/resolver_native_tests.c Sources/Network/LGResolver.c Sources/Network/LGIdentity.c -o "$RUNNER_TEMP/resolver-native-tests"
+          xcrun clang -Wall -Wextra -Werror -I Sources Tests/resolver_native_tests.c Sources/Network/LGResolver.c Sources/Network/LGDNSCheck.c Sources/Network/LGIdentity.c -o "$RUNNER_TEMP/resolver-native-tests"
           "$RUNNER_TEMP/resolver-native-tests"
       - name: Test gateway and portable identity logic
         run: python3 -m unittest discover -s Tests -v

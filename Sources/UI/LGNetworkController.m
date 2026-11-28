@@ -6,6 +6,7 @@
 #import "DesignSystem/LGStyle.h"
 #import "Network/LGScanner.h"
 #import "Network/LGIdentity.h"
+#import "Network/LGDNSCheck.h"
 #import "RouterManagement/LGGateway.h"
 #import "Storage/LGStore.h"
 #import <arpa/inet.h>
@@ -24,7 +25,9 @@
 @property(nonatomic,strong) NSTimer *refreshTimer;
 @property(nonatomic,strong) NSDate *lastScan;
 @property(nonatomic,copy) NSString *scanExplanation;
-@property(nonatomic) BOOL scanning,restoringAll;
+@property(nonatomic) BOOL scanning,restoringAll,positiveCheckRunning;
+@property(nonatomic,strong) NSDictionary *positiveControl;
+@property(nonatomic,weak) UITextView *diagnosticsText;
 @property(nonatomic) NSUInteger contextEpoch;
 @end
 @implementation LGNetworkController
@@ -160,16 +163,27 @@
  if(self.pending.count||self.restoringAll){[self message:@"Operation pending" text:@"Finish gateway verification before changing authorization."];return;}
  [self updateContext];LGAuthorizationController *form=[[LGAuthorizationController alloc]initWithStyle:UITableViewStyleGrouped];form.gateway=self.gateway;form.expectedNetwork=self.context.networkKey;__weak typeof(self) weakSelf=self;form.onChange=^{weakSelf.contextEpoch++;for(LGDevice *d in weakSelf.devices)d.restrictionKnown=NO;[weakSelf refreshAdapter];[weakSelf render];};[self.navigationController pushViewController:form animated:YES];
 }
-- (void)copyDiagnostics{UIPasteboard.generalPasteboard.string=[LGDiagnostics report:self.scanner.diagnostics];[self message:@"Copied" text:@"Sanitized diagnostic report copied. Network names, addresses and credentials are excluded."];}
+- (NSString*)diagnosticReport{NSMutableDictionary *report=[self.scanner.diagnostics mutableCopy]?:[NSMutableDictionary new];if(self.positiveControl)report[@"positiveControl"]=self.positiveControl;return [LGDiagnostics report:report];}
+- (void)positiveCheck:(UIButton*)button{
+ if(self.positiveCheckRunning)return;
+ if(self.scanner.enriching){[button setTitle:@"Wait for scan, then tap to test DNS" forState:UIControlStateNormal];return;}
+ self.positiveCheckRunning=YES;button.enabled=NO;[button setTitle:@"Checking local DNS-SD…" forState:UIControlStateNormal];
+ dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY,0),^{LGDNSCheck check=lg_dns_positive_check();dispatch_async(dispatch_get_main_queue(),^{
+  self.positiveCheckRunning=NO;self.positiveControl=@{@"localOnly":@YES,@"runTime":@(NSDate.date.timeIntervalSince1970),@"setupCode":@(check.setup_code),@"registered":@(check.registered),@"queryCode":@(check.query_code),@"outcome":@(check.outcome),@"matched":@(check.matched),@"removed":@(check.removed),@"cleaned":@(check.cleaned),@"elapsedMS":@(check.elapsed_ms)};
+  self.diagnosticsText.text=[self diagnosticReport];button.enabled=YES;[button setTitle:(check.matched&&check.removed&&check.cleaned)?@"Local PTR passed · tap to repeat":@"Local PTR failed · details in export" forState:UIControlStateNormal];
+ });});
+}
+- (void)copyDiagnostics{UIPasteboard.generalPasteboard.string=[self diagnosticReport];[self message:@"Copied" text:@"Sanitized diagnostic report copied. Network names, addresses and credentials are excluded."];}
 - (void)exportDiagnostics{
- NSString *report=[LGDiagnostics report:self.scanner.diagnostics];NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"LanGuard-Diagnostics.json"]];NSError *error=nil;
+ NSString *report=[self diagnosticReport];NSURL *url=[NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"LanGuard-Diagnostics.json"]];NSError *error=nil;
  if(![report writeToURL:url atomically:YES encoding:NSUTF8StringEncoding error:&error]){[self message:@"Export unavailable" text:@"Could not write the temporary diagnostic file."];return;}
  UIActivityViewController *share=[[UIActivityViewController alloc]initWithActivityItems:@[url] applicationActivities:nil];share.popoverPresentationController.barButtonItem=self.toolbarItems.firstObject;[self presentViewController:share animated:YES completion:nil];
 }
 - (void)networkDetails{
  UIViewController *page=[UIViewController new];page.title=@"Scan diagnostics";page.view.backgroundColor=LGStyle.background;
- UITextView *text=[UITextView new];text.translatesAutoresizingMaskIntoConstraints=NO;text.editable=NO;text.backgroundColor=LGStyle.background;text.textColor=UIColor.whiteColor;text.font=[UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];text.textContainerInset=UIEdgeInsetsMake(16,16,24,16);text.text=[LGDiagnostics report:self.scanner.diagnostics];[page.view addSubview:text];
- [NSLayoutConstraint activateConstraints:@[[text.topAnchor constraintEqualToAnchor:page.view.safeAreaLayoutGuide.topAnchor],[text.bottomAnchor constraintEqualToAnchor:page.view.safeAreaLayoutGuide.bottomAnchor],[text.leadingAnchor constraintEqualToAnchor:page.view.leadingAnchor],[text.trailingAnchor constraintEqualToAnchor:page.view.trailingAnchor]]];
+ UITextView *text=[UITextView new];text.translatesAutoresizingMaskIntoConstraints=NO;text.editable=NO;text.backgroundColor=LGStyle.background;text.textColor=UIColor.whiteColor;text.font=[UIFont monospacedDigitSystemFontOfSize:13 weight:UIFontWeightRegular];text.textContainerInset=UIEdgeInsetsMake(16,16,24,16);text.text=[self diagnosticReport];self.diagnosticsText=text;[page.view addSubview:text];
+ UIButton *check=[UIButton buttonWithType:UIButtonTypeSystem];check.translatesAutoresizingMaskIntoConstraints=NO;[check setTitle:@"Test local PTR · does not test LAN devices" forState:UIControlStateNormal];check.titleLabel.font=[UIFont systemFontOfSize:12];[check addTarget:self action:@selector(positiveCheck:) forControlEvents:UIControlEventTouchUpInside];[page.view addSubview:check];
+ [NSLayoutConstraint activateConstraints:@[[text.topAnchor constraintEqualToAnchor:page.view.safeAreaLayoutGuide.topAnchor],[text.bottomAnchor constraintEqualToAnchor:check.topAnchor],[check.bottomAnchor constraintEqualToAnchor:page.view.safeAreaLayoutGuide.bottomAnchor],[check.leadingAnchor constraintEqualToAnchor:page.view.leadingAnchor],[check.trailingAnchor constraintEqualToAnchor:page.view.trailingAnchor],[check.heightAnchor constraintEqualToConstant:48],[text.leadingAnchor constraintEqualToAnchor:page.view.leadingAnchor],[text.trailingAnchor constraintEqualToAnchor:page.view.trailingAnchor]]];
  page.navigationItem.rightBarButtonItems=@[[[UIBarButtonItem alloc]initWithTitle:@"Export" style:0 target:self action:@selector(exportDiagnostics)],[[UIBarButtonItem alloc]initWithTitle:@"Copy" style:0 target:self action:@selector(copyDiagnostics)]];
  [self.navigationController pushViewController:page animated:YES];
 }

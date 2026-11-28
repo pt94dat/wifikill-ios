@@ -109,6 +109,18 @@ Chưa xác nhận phát hành tại thời điểm ghi phần này. Các kết q
 
 ## 11. Một lần xác minh trên iPhone
 
+**Phép thử đầu tiên không cần cấu hình router/máy tính:** sau nâng cấp, chạy scan đến cuối → Diagnostics → **Test local PTR** → chờ kết quả → Export một JSON. Kỳ vọng `positiveControl`: `setupCode=0`, `registered=1`, `outcome=1`, `matched=1`, `removed=1`, `cleaned=1`. Nếu thất bại, mã setup/query cho biết phép thử dừng ở registration hay resolution; không che lỗi hoặc dùng dữ liệu giả để báo pass. Đây là positive control thật dùng daemon DNS-SD trên chính iPhone, chỉ LocalOnly, không xác nhận tên hay khả năng multicast của LAN. Kết quả còn lại của scan giữ nguyên.
+
+Ứng dụng đăng ký duy nhất một PTR thử LocalOnly có tên ngẫu nhiên, TTL10, đọc lại bằng **batch resolver sản xuất**, xóa record và deallocate connection/query; tổng thời gian chờ setup≤1s/query≤0.8s, ngoài main thread. Không gửi tên thật hoặc lấy MAC. Không thêm quyền/daemon root. JSON chỉ xuất mã trạng thái/thời gian, không xuất tên/IP fixture. Controlled tests gồm lỗi create/register/fd/callback/query, tên không khớp, lỗi remove và thành công; assert cleanup cả đường thất bại. Native host chạy cùng hàm production ba lần; kết quả ghi bên dưới. Test này cần thiết để phân biệt iPhone không chạy được public API với LAN không cung cấp PTR, không thay thế bản sửa chức năng DNS.
+
+### Nếu cần kiểm tra thêm nguồn LAN có ground truth
+
 Sau khi ứng viên có URL/checksum được xác minh: nâng cấp bằng Sileo nguồn hiện có, giữ nguyên dữ liệu. Để thử dương thực sự, dùng một máy tính mình quản trị trong cùng LAN có **PTR đã được xác nhận bằng DNS hệ thống** hoặc một Bonjour service đang quảng bá. Chạy scan một lần khi máy tính đó bật, đợi revision2; đối chiếu IP/tên kỳ vọng, xuất **một JSON sanitized**. Nếu có thể chạy `dns-sd -B _languard-test._tcp local.` và publisher trên máy Mac, đó là kiểm chứng Bonjour riêng, không thay thế PTR.
 
 Dự đoán kiểm chứng: DNS có PTR→`resolved` và tên hiển thị; chỉ negative→query được giữ đến deadline rồi `noRecordReported`; không callback→`applicationDeadline`; nguồn không đủ không được tạo MAC/vendor. Đối chiếu `started/cleaned/budgetNotStarted`, completion và revision. Báo lỗi nếu positive đã được xác nhận từ cùng mạng nhưng LanGuard vẫn không nhận. Chỉ bấm mở một iPhone bình thường không tạo PTR hoặc service, nên không phải positive control.
+
+### Sửa bổ sung trong review trước phát hành
+
+Một lần chạy fixture batch phát hiện `live != 0` dù các lượt trước đã qua. Trace xác nhận deadline có thể vượt qua giữa hai lần đọc monotonic clock: vòng lặp thoát ở kiểm tra thứ hai, trước khi cleanup refs chưa finished. Đã đổi sang một trạng thái stop được chốt ở đầu vòng; deadline vượt giữa vòng sẽ quay lại cleanup thay vì break trực tiếp. Thêm200 chu kỳ deadline1ms, xen kẽ positive/negative, assert không còn ref sống. Đây là lỗi mới phát hiện ở ứng viên chưa phát hành; commit đầu tiên không được merge/publish. Không xem một lượt test pass là đủ để bỏ qua failure.
+
+Bổ sung source: `LGDNSCheck.c/.h`, UI nút positive control và export whitelist có kiểm tra redaction. Bộ portable suite cuối dự kiến31 test methods; số thực tế CI ghi trong phụ lục, không lấy dự kiến làm bằng chứng.

@@ -60,7 +60,8 @@ void lg_hostnames_controlled(LGDNSRequest *requests,size_t count,unsigned interf
  for(size_t i=0;i<count;i++){requests[i].name[0]=0;requests[i].outcome=LGDNSNotAttempted;memset(&requests[i].metrics,0,sizeof(requests[i].metrics));}
  while(next<count||active){
   int cancelled=control&&control->cancelled&&control->cancelled(control->context);
-  if(cancelled||clock_ms()>=deadline){
+  int stopped=cancelled||clock_ms()>=deadline;
+  if(stopped){
    for(unsigned s=0;s<slots;s++)if(refs[s]){if(cancelled)results[s].outcome=LGDNSCancelled;results[s].finished=1;}
    if(cancelled)for(size_t i=next;i<count;i++)requests[i].outcome=LGDNSCancelled;
   }
@@ -70,7 +71,8 @@ void lg_hostnames_controlled(LGDNSRequest *requests,size_t count,unsigned interf
    if(request->outcome!=LGDNSResolved)request->name[0]=0;
    DNSServiceRefDeallocate(refs[s]);refs[s]=NULL;request->metrics.cleaned=1;active--;
   }
-  if(cancelled||clock_ms()>=deadline)break;
+  if(stopped)break;
+  if(clock_ms()>=deadline)continue;
   for(unsigned s=0;s<slots&&next<count;s++)if(!refs[s]){
    size_t i=next++;LGDNSRequest *request=&requests[i];struct in_addr addr;
    if(!request->ip||inet_pton(AF_INET,request->ip,&addr)!=1){request->outcome=LGDNSFailure;continue;}

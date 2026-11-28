@@ -20,3 +20,6 @@ class NetworkEngineTests(unittest.TestCase):
 
     def test_bounded_batch_resolution_and_coverage(self):
         self.run_c("resolver_batch_tests.c",["Sources/Network/LGResolver.c","Sources/Network/LGIdentity.c"],["-DLG_RESOLVER_TEST"])
+
+    def test_owned_dns_positive_control_and_failure_cleanup(self):
+        self.run_c('dnscheck_tests.c',['Sources/Network/LGDNSCheck.c','Sources/Network/LGIdentity.c'],['-DLG_DNS_CHECK_TEST'])

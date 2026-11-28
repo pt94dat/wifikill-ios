@@ -24,5 +24,9 @@ int main(void){
   assert(!live&&peak<=64);if(!pass)assert(resolved==17&&cleaned==17&&peak==17);if(pass==1)assert(negative==64&&not_started==66&&cleaned==64);if(pass==2)assert(cancelled_count==130&&cleaned==64);if(pass==3)assert(resolved==130&&cleaned==130&&peak==64);
   printf("Owned batch: n=%zu resolved=%zu negative=%zu notStarted=%zu cancelled=%zu peakRefs=%d cleaned=%d\n",count,resolved,negative,not_started,cancelled_count,peak,cleaned);
  }
+ /* Force frequent deadline crossings while slots are opening/closing. */
+ control.hard_ms=1;cancel=0;
+ for(int repeat=0;repeat<200;repeat++){peak=cleaned=0;negative_only=repeat%2;for(size_t i=0;i<130;i++)requests[i].ip="192.0.2.20";lg_hostnames_controlled(requests,130,0,&control);assert(!live&&peak<=64);}
+ puts("200 short-deadline batch cycles: no retained references");
  puts("Production DNS event-loop coverage and active-reference bounds passed; callback fixture only");
 }
