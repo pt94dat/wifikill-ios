@@ -128,3 +128,5 @@ Bổ sung source: `LGDNSCheck.c/.h`, UI nút positive control và export whiteli
 ### Provenance được nối vào sản phẩm
 
 Màn hình **Sources and confidence** hiển thị từng giá trị, nguồn, confidence, thời điểm ghi nhận, validity và giới hạn; scope nội bộ là network key của scan, UI ghi “this snapshot network”. Không xuất network key chứa tên/BSSID vào JSON. Không điền manufacturer/model nếu thiếu bằng chứng. Các phép copy model giữ snapshot initial tách biệt; test mới kiểm tra đủ tám trường, upsert không nhân bản, copy isolation, scope và xóa giá trị rỗng. PTR và NBNS cùng được giữ như hai nguồn thay vì chỉ thấy một chuỗi hostname cuối cùng. Gateway inventory đang có được ghi nguồn authenticated, đồng thời nói rõ TLS/token xác thực service chứ không chứng minh endpoint vật lý.
+
+Fixture batch cũng dùng130 IP/tên PTR **khác nhau**, kiểm tra chính xác từng output tương ứng input khi slot tái sử dụng; không chỉ kiểm tra tổng số callback. Pipeline synthetic so expected set với observed set và tên PTR/Bonjour gắn đúng địa chỉ, báo FP/FN của **observation fixture**, không phải precision/recall thiết bị vật lý trong mạng nhà.
