@@ -4,6 +4,9 @@ typedef NS_ENUM(NSInteger,LGControlState){LGControlNone,LGControlRestricting,LGC
 @interface LGDevice:NSObject<NSCopying>
 @property(nonatomic,copy) NSString *ip,*mac,*name,*hostname,*identityKey,*identitySource,*operationError,*bonjourName,*serviceEvidence,*typeHint,*dnsOutcome;
 @property(nonatomic,readonly) NSString *identityConfidence;
+@property(nonatomic,copy) NSArray<NSDictionary*> *identityEvidence;
+- (void)recordAttribute:(NSString*)attribute value:(NSString*)value source:(NSString*)source confidence:(NSString*)confidence scope:(NSString*)scope limitations:(NSString*)limitations;
+- (void)scopeIdentityToNetwork:(NSString*)network;
 @property(nonatomic) BOOL protectedDevice,systemProtected,favorite,neighborCached,previouslySeen,restrictionKnown,routerRulePresent,desiredRestricted,hasIntent,macSelfReported;
 @property(nonatomic) LGReachability reachability;
 @property(nonatomic) NSInteger probeEvidence;

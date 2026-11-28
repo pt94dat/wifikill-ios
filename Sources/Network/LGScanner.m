@@ -30,14 +30,14 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
    if(self.generation!=generation)break;
    [queue addOperationWithBlock:^{@autoreleasepool{
     if(self.generation!=generation)return;struct in_addr address={htonl(base+h)};char ip[16];inet_ntop(AF_INET,&address,ip,16);BOOL local=base+h==start.network.address;double ms=0;int evidence=local?3:0;
-    if(!local&&!lg_probe_detail(ip,300,&ms,&evidence))return;LGDevice *d=[LGDevice new];d.ip=@(ip);d.reachability=local?LGReachabilityHost:LGReachabilityResponded;d.lastSeen=NSDate.date;d.probeEvidence=evidence;d.latencyMS=ms;if(local)d.name=@"This iPhone";
+    if(!local&&!lg_probe_detail(ip,300,&ms,&evidence))return;LGDevice *d=[LGDevice new];d.ip=@(ip);d.reachability=local?LGReachabilityHost:LGReachabilityResponded;d.lastSeen=NSDate.date;d.probeEvidence=evidence;d.latencyMS=ms;if(local)d.name=@"This iPhone";[d recordAttribute:@"Address" value:d.ip source:local?@"Local interface":@"TCP/443 response" confidence:local?@"Confirmed local interface":@"Address observation · identity unverified" scope:start.networkKey limitations:local?@"Current local interface":@"Refusal can originate from an intermediary; Internet access unverified"];
     @synchronized(found){found[d.ip]=d;}
    }}];
   }
   [queue waitUntilAllOperationsAreFinished];if(self.generation!=generation)return;double probesEnded=NSProcessInfo.processInfo.systemUptime;
   LGNetwork network=start.network;LGNeighbor *neighbors=calloc(1024,sizeof(*neighbors));unsigned rejected=0;size_t count=neighbors?lg_neighbors(&network,neighbors,1024,&rejected):0;LGNeighborStats ns={0};if(neighbors)ns=lg_neighbor_stats();else{ns.apiError=ENOMEM;ns.view=3;}
   for(size_t i=0;i<count;i++){
-   NSString *ip=@(neighbors[i].ip);LGDevice *d=found[ip];if(!d){d=[LGDevice new];d.ip=ip;d.reachability=LGReachabilityCached;found[ip]=d;}d.neighborCached=YES;d.mac=@(neighbors[i].mac);d.identitySource=@"Local neighbor cache · unauthenticated identity";
+   NSString *ip=@(neighbors[i].ip);LGDevice *d=found[ip];if(!d){d=[LGDevice new];d.ip=ip;d.reachability=LGReachabilityCached;found[ip]=d;}d.neighborCached=YES;d.mac=@(neighbors[i].mac);d.identitySource=@"Local neighbor cache · unauthenticated identity";[d recordAttribute:@"MAC" value:d.mac source:@"Local neighbor cache" confidence:@"Observed · unauthenticated" scope:start.networkKey limitations:@"May be cached; private addresses do not identify a manufacturer"];
   }free(neighbors);
   NSArray *stored=[LGStore observations:start.networkKey];NSArray *history=[LGScanSnapshot history:stored now:NSDate.date.timeIntervalSince1970 address:network.address mask:network.netmask];
   for(NSDictionary *old in history){NSString *ip=old[@"ip"];LGDevice *d=found[ip];if(!d){d=[LGDevice new];d.ip=ip;found[ip]=d;}d.previouslySeen=YES;if(!d.lastSeen)d.lastSeen=[NSDate dateWithTimeIntervalSince1970:[old[@"seen"] doubleValue]];}
@@ -55,7 +55,7 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
   NSMutableDictionary *dns=[NSMutableDictionary new];NSMutableDictionary *dnsLifecycle=[NSMutableDictionary new];NSMutableDictionary *dnsCodes=[NSMutableDictionary new];__block NSUInteger nbReplies=0;
   NSMutableArray<LGDevice*> *targets=[NSMutableArray new];
   for(LGDevice *d in found.allValues)if(d.reachability==LGReachabilityResponded){[targets addObject:d];[queue addOperationWithBlock:^{@autoreleasepool{
-   if(self.generation!=generation)return;char nbName[64],nbMac[18];if(lg_nbns_query(d.ip.UTF8String,150,nbName,nbMac)){@synchronized(dns){nbReplies++;}if(nbName[0])d.hostname=@(nbName);if(!d.mac.length&&nbMac[0]){d.mac=@(nbMac);d.identitySource=@"NetBIOS self-reported MAC · not authenticated";d.macSelfReported=YES;}}
+   if(self.generation!=generation)return;char nbName[64],nbMac[18];if(lg_nbns_query(d.ip.UTF8String,150,nbName,nbMac)){@synchronized(dns){nbReplies++;}if(nbName[0]){d.hostname=@(nbName);[d recordAttribute:@"Network name" value:d.hostname source:@"NetBIOS node status" confidence:@"Device-reported · unverified" scope:start.networkKey limitations:@"Unauthenticated response; not proof of ownership"];}if(!d.mac.length&&nbMac[0]){d.mac=@(nbMac);d.identitySource=@"NetBIOS self-reported MAC · not authenticated";d.macSelfReported=YES;[d recordAttribute:@"MAC" value:d.mac source:@"NetBIOS node status" confidence:@"Device-reported · unverified" scope:start.networkKey limitations:@"Self-reported identifier; not a verified neighbor mapping"];}}
   }}];}
   [queue waitUntilAllOperationsAreFinished];if(self.generation!=generation)return;
   LGDNSRequest *requests=calloc(MAX((NSUInteger)1,targets.count),sizeof(*requests));
@@ -65,7 +65,7 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
    lg_hostnames_controlled(requests,targets.count,0,&control);
    for(NSUInteger i=0;i<targets.count;i++){
     LGDNSRequest *r=&requests[i];LGDNSOutcome outcome=r->outcome;LGDNSMetrics timing=r->metrics;LGDevice *d=targets[i];
-    NSString *category=@[@"notAttempted",@"resolved",@"applicationDeadline",@"noRecordReported",@"resolverFailure",@"malformedReply",@"cancelled"][outcome];d.dnsOutcome=category;if(outcome==LGDNSResolved)d.hostname=@(r->name);
+    NSString *category=@[@"notAttempted",@"resolved",@"applicationDeadline",@"noRecordReported",@"resolverFailure",@"malformedReply",@"cancelled"][outcome];d.dnsOutcome=category;if(outcome==LGDNSResolved){d.hostname=@(r->name);[d recordAttribute:@"Network name" value:d.hostname source:@"Reverse DNS PTR" confidence:@"Network-reported · unverified" scope:start.networkKey limitations:@"Receipt processing time; name does not authenticate a physical device"];}
     if(outcome==LGDNSNotAttempted)dnsLifecycle[@"budgetNotStarted"]=@([dnsLifecycle[@"budgetNotStarted"] unsignedIntegerValue]+1);
     else dnsLifecycle[@"started"]=@([dnsLifecycle[@"started"] unsignedIntegerValue]+1);
     dnsLifecycle[@"cleaned"]=@([dnsLifecycle[@"cleaned"] unsignedIntegerValue]+timing.cleaned);
@@ -81,7 +81,7 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
   dispatch_group_notify(serviceGroup,dispatch_get_main_queue(),^{if(self.generation!=generation)return;
    LGNetworkContext *after=[LGNetworkContext current];if(!after||![after.fingerprint isEqual:start.fingerprint]){self.enriching=NO;self.context=after;self.metrics=@{};self.diagnostics=@{@"scanID":scanID,@"lifecycle":@"networkChanged",@"snapshotCommitted":@NO};completion(@[],@"Network changed; scan discarded");return;}
    NSUInteger matched=[LGServiceEvidence merge:serviceRows into:found network:network];
-   for(LGDevice *d in found.allValues)if(!d.identityKey.length)d.identityKey=[NSString stringWithFormat:@"%@:%@",start.networkKey,d.ip];
+   for(LGDevice *d in found.allValues){if(!d.identityKey.length)d.identityKey=[NSString stringWithFormat:@"%@:%@",start.networkKey,d.ip];[d scopeIdentityToNetwork:start.networkKey];}
    NSDictionary *finalCounts=[LGScanSnapshot counts:found.allValues];NSMutableDictionary *metrics=[finalCounts mutableCopy];metrics[@"rejectedNeighbors"]=@(rejected);metrics[@"probed"]=@(hosts);metrics[@"neighborView"]=@(ns.view);metrics[@"scanID"]=scanID;metrics[@"revision"]=@2;
     NSMutableArray *records=[NSMutableArray new];for(LGDevice *d in found.allValues)if(d.lastSeen)[records addObject:@{@"ip":d.ip,@"seen":@(d.lastSeen.timeIntervalSince1970)}];[LGStore saveObservations:[LGScanSnapshot history:records now:NSDate.date.timeIntervalSince1970 address:network.address mask:network.netmask] network:start.networkKey];
     mach_task_basic_info_data_t memory={0};mach_msg_type_number_t size=MACH_TASK_BASIC_INFO_COUNT;kern_return_t memoryCode=task_info(mach_task_self(),MACH_TASK_BASIC_INFO,(task_info_t)&memory,&size);

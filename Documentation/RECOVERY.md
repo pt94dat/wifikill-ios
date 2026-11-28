@@ -18,7 +18,7 @@ Lý do phải thay điều phối: giữ âm mở đúng cách khiến pool 12 c
 
 NBNS vẫn tối đa 12 worker, chạy trước vòng DNS, độc lập với âm DNS; tên NBNS không bị PTR thất bại ghi đè. Bonjour vẫn chạy trên main run loop, song song với phần identity. Không thay TCP/443 bằng quét nhiều port chỉ để tăng số đếm. Snapshot tiếp tục biểu diễn **địa chỉ/quan sát**, không xác nhận số thiết bị vật lý.
 
-Không thay neighbor parser bằng API riêng/quyền root. Không thêm dependency/OUI database khi chưa có MAC hợp lệ; database không khắc phục được dữ liệu đầu vào thiếu. Kiến trúc evidence hiện tại có nguồn MAC, loại phản hồi, DNS outcome, service evidence, thời gian phản hồi và phạm vi scan; chưa phải inventory có xác thực hoặc hồ sơ đầy đủ thời gian/TTL cho từng thuộc tính.
+Không thay neighbor parser bằng API riêng/quyền root. Không thêm dependency/OUI database khi chưa có MAC hợp lệ; database không khắc phục được dữ liệu đầu vào thiếu. Bổ sung `LGDevice.identityEvidence`: từng thuộc tính có value/source/confidence/observedAt/validity/networkScope/limitations; tối đa64 observations/device, upsert theo attribute+source. Thời điểm là lúc ứng dụng ghi nhận dữ liệu, không phải đồng hồ thiết bị từ xa; validity giới hạn snapshot, không bịa TTL DNS. Evidence không được lưu vào history hoặc sanitized export. Nguồn gồm TCP/local interface, neighbor, PTR, NBNS, DNS-SD, user label và inventory của adapter gateway đã xác thực sẵn có. Không biến dữ liệu đó thành identity vật lý đã xác thực.
 
 ## 3. Nghiên cứu độc lập và lựa chọn
 
@@ -103,7 +103,7 @@ Chưa xác nhận phát hành tại thời điểm ghi phần này. Các kết q
 - Không có quyền vận hành iPhone từ môi trường này, nên không tự chứng minh PTR/Bonjour path trên A8.
 - DNS không phải nguồn tên cho mọi thiết bị.64 âm có thể hết budget; `budgetNotStarted` cho biết phần chưa thử. Subnet IPv4 vẫn/22–/30; không bổ sung inventory IPv6.
 - Chưa thêm adapter DHCP/router inventory mới. Adapter cần xác thực/đăng ký rõ ràng; không tự lấy dữ liệu quản trị.
-- Identity model chưa trở thành hồ sơ đa thuộc tính có thời hạn xác thực đầy đủ; tên DNS/NBNS/Bonjour vẫn tự báo, dễ trùng/giả. User label không chứng minh identity.
+- Identity evidence đã có provenance theo thuộc tính và scope snapshot, nhưng chưa có TTL riêng được lấy từ từng protocol hoặc danh tính vật lý được xác thực. Tên DNS/NBNS/Bonjour vẫn có thể trùng/giả; nhãn người dùng không chứng minh identity.
 - Không có số peak-memory/battery/phone performance mới. Không gọi suite host là nghiệm thu iPhone.
 - Kill/Unkill không thuộc phần sửa này; giữ backend được cấp quyền và phân biệt readback với Internet thực.
 
@@ -124,3 +124,7 @@ Dự đoán kiểm chứng: DNS có PTR→`resolved` và tên hiển thị; ch�
 Một lần chạy fixture batch phát hiện `live != 0` dù các lượt trước đã qua. Trace xác nhận deadline có thể vượt qua giữa hai lần đọc monotonic clock: vòng lặp thoát ở kiểm tra thứ hai, trước khi cleanup refs chưa finished. Đã đổi sang một trạng thái stop được chốt ở đầu vòng; deadline vượt giữa vòng sẽ quay lại cleanup thay vì break trực tiếp. Thêm200 chu kỳ deadline1ms, xen kẽ positive/negative, assert không còn ref sống. Đây là lỗi mới phát hiện ở ứng viên chưa phát hành; commit đầu tiên không được merge/publish. Không xem một lượt test pass là đủ để bỏ qua failure.
 
 Bổ sung source: `LGDNSCheck.c/.h`, UI nút positive control và export whitelist có kiểm tra redaction. Bộ portable suite cuối dự kiến31 test methods; số thực tế CI ghi trong phụ lục, không lấy dự kiến làm bằng chứng.
+
+### Provenance được nối vào sản phẩm
+
+Màn hình **Sources and confidence** hiển thị từng giá trị, nguồn, confidence, thời điểm ghi nhận, validity và giới hạn; scope nội bộ là network key của scan, UI ghi “this snapshot network”. Không xuất network key chứa tên/BSSID vào JSON. Không điền manufacturer/model nếu thiếu bằng chứng. Các phép copy model giữ snapshot initial tách biệt; test mới kiểm tra đủ tám trường, upsert không nhân bản, copy isolation, scope và xóa giá trị rỗng. PTR và NBNS cùng được giữ như hai nguồn thay vì chỉ thấy một chuỗi hostname cuối cùng. Gateway inventory đang có được ghi nguồn authenticated, đồng thời nói rõ TLS/token xác thực service chứ không chứng minh endpoint vật lý.

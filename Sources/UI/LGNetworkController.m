@@ -94,9 +94,10 @@
  if(!prefs){NSDictionary *old=[defaults dictionaryForKey:[@"device.v2:" stringByAppendingString:d.identityKey]];if(old){NSMutableDictionary *migrated=[old mutableCopy];migrated[@"expires"]=@(NSDate.date.timeIntervalSince1970+900);prefs=migrated;[defaults setObject:prefs forKey:key];}}
  if(prefs[@"expires"]&&[prefs[@"expires"] doubleValue]<NSDate.date.timeIntervalSince1970)prefs=nil;
  if([prefs[@"mac"] isKindOfClass:NSString.class]&&[prefs[@"mac"] length]&&d.mac.length&&![prefs[@"mac"] isEqual:d.mac])prefs=nil;
- if([prefs[@"name"] isKindOfClass:NSString.class])d.name=prefs[@"name"];d.favorite=[prefs[@"favorite"] boolValue];d.protectedDevice=d.systemProtected||[prefs[@"protected"] boolValue];
+ if([prefs[@"name"] isKindOfClass:NSString.class]){d.name=prefs[@"name"];if(!d.systemProtected)[d recordAttribute:@"Label" value:d.name source:@"User" confidence:@"User-defined" scope:self.context.networkKey limitations:@"Label is not verified identity; address-only labels expire after 15 minutes"];}d.favorite=[prefs[@"favorite"] boolValue];d.protectedDevice=d.systemProtected||[prefs[@"protected"] boolValue];
 }
 - (void)savePreferences:(LGDevice*)d {
+ [d recordAttribute:@"Label" value:d.name source:@"User" confidence:@"User-defined" scope:self.context.networkKey limitations:@"Label is not verified identity; address-only labels expire after 15 minutes"];
  NSMutableDictionary *prefs=[@{@"name":d.name?:@"",@"favorite":@(d.favorite),@"protected":@(d.protectedDevice),@"mac":d.mac?:@""} mutableCopy];if(!d.mac.length||d.macSelfReported)prefs[@"expires"]=@(NSDate.date.timeIntervalSince1970+900);[NSUserDefaults.standardUserDefaults setObject:prefs forKey:[self preferenceKey:d]];[self filterChanged];
 }
 - (void)refreshAdapter{
@@ -106,7 +107,7 @@
   if(epoch!=self.contextEpoch||![endpoint isEqual:self.gateway.endpoint]||![self contextIsCurrent])return;
   if(!error&&[r[@"devices"] isKindOfClass:NSArray.class]){NSMutableDictionary *mapping=[NSMutableDictionary new];NSMutableSet *conflicts=[NSMutableSet new];
    for(id row in r[@"devices"]){if(![row isKindOfClass:NSDictionary.class]||![row[@"dst"] isKindOfClass:NSString.class]||![row[@"lladdr"] isKindOfClass:NSString.class])continue;char mac[18];if(!lg_normalize_mac([row[@"lladdr"] UTF8String],mac))continue;NSString *ip=row[@"dst"];if(mapping[ip]&&![mapping[ip] isEqual:@(mac)])[conflicts addObject:ip];mapping[ip]=@(mac);}
-   for(LGDevice *d in self.devices)if(mapping[d.ip]&&![conflicts containsObject:d.ip]){d.mac=mapping[d.ip];d.identitySource=@"Authenticated gateway neighbor cache";d.macSelfReported=NO;[self loadPreferences:d];}
+   for(LGDevice *d in self.devices)if(mapping[d.ip]&&![conflicts containsObject:d.ip]){d.mac=mapping[d.ip];d.identitySource=@"Authenticated gateway neighbor cache";d.macSelfReported=NO;[d recordAttribute:@"MAC" value:d.mac source:@"Authenticated gateway inventory" confidence:@"Authorized inventory · identity unverified" scope:self.context.networkKey limitations:@"TLS/token authenticate the inventory service, not the physical endpoint"];[self loadPreferences:d];}
   }[self refreshRestrictions];
  }];
 }

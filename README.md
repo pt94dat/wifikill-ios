@@ -45,3 +45,5 @@ Theos with an Apple-provided Xcode SDK builds/signs/packages the native ARM64 ap
 Physical update installation, runtime scan accuracy, Internet control, UI and performance remain separate gates. No physical-device acceptance is implied by successful compilation. [Verification](Documentation/VERIFICATION.md).
 
 Detailed APK-derived metadata and device photographs are not included in this public repository. Original Android binaries, branding and tracking SDKs are not redistributed.
+
+Current DNS recovery implementation, experiment failures, physical positive-control procedure and release evidence: [Vietnamese recovery report](Documentation/RECOVERY.md).

@@ -1,9 +1,17 @@
 #import "LGDevice.h"
 @implementation LGDevice
-- (id)copyWithZone:(NSZone*)zone{(void)zone;LGDevice *d=[LGDevice new];NSArray *keys=@[@"ip",@"mac",@"name",@"hostname",@"identityKey",@"identitySource",@"operationError",@"bonjourName",@"serviceEvidence",@"typeHint",@"dnsOutcome",@"reachability",@"probeEvidence",@"latencyMS",@"systemProtected",@"protectedDevice",@"favorite",@"neighborCached",@"previouslySeen",@"macSelfReported",@"control",@"restrictionKnown",@"routerRulePresent",@"lastSeen",@"ruleCheckedAt",@"desiredRestricted",@"hasIntent"];[d setValuesForKeysWithDictionary:[self dictionaryWithValuesForKeys:keys]];return d;}
+- (id)copyWithZone:(NSZone*)zone{(void)zone;LGDevice *d=[LGDevice new];NSArray *keys=@[@"ip",@"mac",@"name",@"hostname",@"identityKey",@"identitySource",@"operationError",@"bonjourName",@"serviceEvidence",@"typeHint",@"dnsOutcome",@"identityEvidence",@"reachability",@"probeEvidence",@"latencyMS",@"systemProtected",@"protectedDevice",@"favorite",@"neighborCached",@"previouslySeen",@"macSelfReported",@"control",@"restrictionKnown",@"routerRulePresent",@"lastSeen",@"ruleCheckedAt",@"desiredRestricted",@"hasIntent"];[d setValuesForKeysWithDictionary:[self dictionaryWithValuesForKeys:keys]];return d;}
+- (void)recordAttribute:(NSString*)attribute value:(NSString*)value source:(NSString*)source confidence:(NSString*)confidence scope:(NSString*)scope limitations:(NSString*)limitations{
+ if(!attribute.length||value.length>512||!source.length||!scope.length)return;
+ NSMutableArray *records=[NSMutableArray new];for(NSDictionary *old in self.identityEvidence)if(!([old[@"attribute"] isEqual:attribute]&&[old[@"source"] isEqual:source]))[records addObject:old];
+ if(!value.length){self.identityEvidence=records.copy;return;}
+ if(records.count>=64)[records removeObjectAtIndex:0];
+ [records addObject:@{@"attribute":attribute,@"value":value,@"source":source,@"confidence":confidence?:@"Unverified",@"observedAt":@(NSDate.date.timeIntervalSince1970),@"validity":@"Current snapshot; recheck on next scan",@"networkScope":scope,@"limitations":limitations?:@"Not an authenticated physical identity"}];self.identityEvidence=records.copy;
+}
+- (void)scopeIdentityToNetwork:(NSString*)network{if(!network.length)return;NSMutableArray *records=[NSMutableArray new];for(NSDictionary *old in self.identityEvidence){NSMutableDictionary *row=[old mutableCopy];row[@"networkScope"]=network;[records addObject:row.copy];}self.identityEvidence=records.copy;}
 - (NSString*)identityConfidence{if(self.reachability==LGReachabilityHost)return @"Confirmed local interface";if(self.name.length&&!self.systemProtected)return @"User-defined label";if(self.bonjourName.length||self.hostname.length||self.mac.length)return @"Reported by network · unverified";return @"Unknown";}
 
-- (instancetype)init{if((self=[super init])){_ip=@"";_mac=@"";_name=@"";_hostname=@"";_identityKey=@"";_identitySource=@"Unavailable";_operationError=@"";_bonjourName=@"";_serviceEvidence=@"";_typeHint=@"Device type unknown";_dnsOutcome=@"Not attempted";}return self;}
+- (instancetype)init{if((self=[super init])){_identityEvidence=@[];_ip=@"";_mac=@"";_name=@"";_hostname=@"";_identityKey=@"";_identitySource=@"Unavailable";_operationError=@"";_bonjourName=@"";_serviceEvidence=@"";_typeHint=@"Device type unknown";_dnsOutcome=@"Not attempted";}return self;}
 - (BOOL)restricted{return self.restrictionKnown&&self.routerRulePresent;}
 - (BOOL)pending{return self.control==LGControlRestricting||self.control==LGControlRestoring;}
 - (NSString*)displayName{return self.name.length?self.name:(self.bonjourName.length?self.bonjourName:(self.hostname.length?self.hostname:self.ip));}
