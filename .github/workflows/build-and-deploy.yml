@@ -22,8 +22,22 @@ jobs:
           name: isolated-gateway-lab-results
           path: build/gateway-lab-results.json
           if-no-files-found: error
+  native-reference:
+    runs-on: macos-15-intel
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Verify reused SimplePing with actual unprivileged host loopback
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -I Sources -framework Foundation -framework CoreServices Tests/host_probe_native_tests.m Sources/Network/LGHostProbe.m Sources/ThirdParty/SimplePing.m -o "$RUNNER_TEMP/host-probe-tests"
+          "$RUNNER_TEMP/host-probe-tests"
+      - name: Verify private enrollment file decoding
+        run: |
+          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/enrollment_native_tests.m Sources/RouterManagement/LGEnrollment.m Sources/RouterManagement/LGEndpoint.m -o "$RUNNER_TEMP/enrollment-tests"
+          "$RUNNER_TEMP/enrollment-tests"
   build:
-    needs: gateway-lab
+    needs: [gateway-lab, native-reference]
     runs-on: macos-15-intel
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
@@ -44,14 +58,6 @@ jobs:
         with:
           name: isolated-gateway-lab-results
           path: build
-      - name: Verify reused SimplePing with actual unprivileged host loopback
-        run: |
-          xcrun clang -fobjc-arc -Wall -Wextra -I Sources -framework Foundation -framework CoreServices Tests/host_probe_native_tests.m Sources/Network/LGHostProbe.m Sources/ThirdParty/SimplePing.m -o "$RUNNER_TEMP/host-probe-tests"
-          "$RUNNER_TEMP/host-probe-tests"
-      - name: Verify private enrollment file decoding
-        run: |
-          xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/enrollment_native_tests.m Sources/RouterManagement/LGEnrollment.m Sources/RouterManagement/LGEndpoint.m -o "$RUNNER_TEMP/enrollment-tests"
-          "$RUNNER_TEMP/enrollment-tests"
       - name: Test native device state reducer
         run: |
           xcrun clang -fobjc-arc -Wall -Wextra -Werror -I Sources -framework Foundation Tests/model_tests.m Sources/Devices/LGDevice.m -o "$RUNNER_TEMP/model-tests"

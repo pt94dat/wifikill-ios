@@ -114,6 +114,11 @@ def main():
         PROCESSES.append(dnsmasq);time.sleep(.3)
         ns(TARGET,['udhcpc','-i','eth0','-n','-q','-t','3','-T','2','-s','/bin/true','-x','hostname:languard-owned-target'])
         check('actual_dhcp_exchange_created_lease',bool(leasefile.read_text().strip()))
+        # Establish an allocation-only case: remove any ARP learned by DHCP itself.
+        for lease in leasefile.read_text().splitlines():
+            fields=lease.split()
+            if len(fields)==5 and fields[1]=='02:00:00:00:00:04':
+                ns(GW,['ip','neigh','del',fields[2],'dev','br-lan'],check=False)
         (directory/'config.json').write_text(json.dumps(config))
         log=(directory/'agent.log').open('w')
         agent=subprocess.Popen(['ip','netns','exec',GW,sys.executable,str(ROOT/'Gateway/languard_gateway.py'),'--config',str(directory/'config.json')],stdout=log,stderr=log)
@@ -139,6 +144,8 @@ def main():
             time.sleep(.2)
         check('authenticated_tls_capabilities',status==200 and cap['management_authorized'])
         status,inventory=api('GET','/v1/devices');leases=[row for row in inventory.get('devices',[]) if row.get('source')=='dnsmasq' and row.get('lladdr')=='02:00:00:00:00:04']
+        if not (status==200 and len(leases)==1 and leases[0].get('hostname')=='languard-owned-target'):
+            print('Owned DHCP fixture',leasefile.read_text(),'API status',status,'owned inventory',inventory,flush=True)
         check('actual_dhcp_mac_name_via_authenticated_inventory',status==200 and len(leases)==1 and leases[0].get('hostname')=='languard-owned-target')
         INVENTORY_EVIDENCE.extend(leases)
         status,_=api('PUT','/v1/restrictions/02:00:00:00:00:04',{'ip':leases[0]['dst'],'seconds':30})

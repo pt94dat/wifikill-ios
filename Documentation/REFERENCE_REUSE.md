@@ -96,3 +96,7 @@ ICMP trên phone, model/manufacturer thực sự được thiết bị LAN quả
 ## 12. Quy trình cuối ngắn gọn
 
 Nếu phát hành: cập nhật một lần từ Sileo cũ, scan mạng mình được phép quản trị, xem tên/IP/MAC/model có nguồn trongdetails rồi xuất một sanitizedJSON. `icmpResponded` và `icmpFailures` dùng để phân biệt echo thực với socket failure. `authorizedInventory` tách số merge quản trị khỏi rawscan. Không gửi enrollmentfile chứa token. Không có gatewayservice thì không cần điền thông tin quản trị để thử discovery.
+
+### Gate đầu tiên, chưa phát hành
+
+Run46098939210: transactionDHCP thật đã tạo lease, nhưng assertion record API chưa đạt; build bịskip đúng gate. Chưa kết luận root cause khi chưa có actualrecord. Lab bổ sung diagnostic chỉ cho fixture sở hữu, và chủ động xóa neighbor có thể được DHCP học để tạo đối chứng allocation-only. Các native checks được tách job độc lập, tránh một lỗi lab che kết quả tương thích library. Lease source cũng từ chối non-regularfile bằng fdnonblocking/fstat, không để FIFO cấu hình sai treo worker.

@@ -10,6 +10,7 @@ import os
 import re
 import ssl
 import signal
+import stat
 import subprocess
 import threading
 import time
@@ -79,7 +80,11 @@ class Gateway:
         leases, conflicts = {}, set()
         now = int(time.time())
         for file in files:
-            with open(file, encoding="utf-8") as stream:
+            fd = os.open(file, os.O_RDONLY | os.O_NONBLOCK)
+            if not stat.S_ISREG(os.fstat(fd).st_mode):
+                os.close(fd)
+                raise ValueError("Lease source must be a regular file")
+            with os.fdopen(fd, encoding="utf-8") as stream:
                 text = stream.read(1024 * 1024 + 1)
             if len(text) > 1024 * 1024 or len(text.splitlines()) > 4096:
                 raise ValueError("Lease inventory exceeds bounded size")
