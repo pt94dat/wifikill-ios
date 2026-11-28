@@ -57,12 +57,15 @@ static double cpu_ms(void){struct rusage r;if(getrusage(RUSAGE_SELF,&r))return -
   for(LGDevice *d in found.allValues)if(d.reachability==LGReachabilityResponded){[targets addObject:d];[queue addOperationWithBlock:^{@autoreleasepool{
    if(self.generation!=generation)return;char nbName[64],nbMac[18];if(lg_nbns_query(d.ip.UTF8String,150,nbName,nbMac)){@synchronized(dns){nbReplies++;}if(nbName[0]){d.hostname=@(nbName);[d recordAttribute:@"Network name" value:d.hostname source:@"NetBIOS node status" confidence:@"Device-reported · unverified" scope:start.networkKey limitations:@"Unauthenticated response; not proof of ownership"];}if(!d.mac.length&&nbMac[0]){d.mac=@(nbMac);d.identitySource=@"NetBIOS self-reported MAC · not authenticated";d.macSelfReported=YES;[d recordAttribute:@"MAC" value:d.mac source:@"NetBIOS node status" confidence:@"Device-reported · unverified" scope:start.networkKey limitations:@"Self-reported identifier; not a verified neighbor mapping"];}}
   }}];}
-  [queue waitUntilAllOperationsAreFinished];if(self.generation!=generation)return;
   LGDNSRequest *requests=calloc(MAX((NSUInteger)1,targets.count),sizeof(*requests));
   if(requests){
    for(NSUInteger i=0;i<targets.count;i++)requests[i].ip=targets[i].ip.UTF8String;
    BOOL(^cancelCheck)(void)=^BOOL(void){return self.generation!=generation;};LGDNSControl control={400,3000,dns_cancelled,(__bridge void*)cancelCheck};
    lg_hostnames_controlled(requests,targets.count,0,&control);
+  }
+  // NBNS and DNS run independently, then join before deterministic source precedence.
+  [queue waitUntilAllOperationsAreFinished];if(self.generation!=generation){free(requests);return;}
+  if(requests){
    for(NSUInteger i=0;i<targets.count;i++){
     LGDNSRequest *r=&requests[i];LGDNSOutcome outcome=r->outcome;LGDNSMetrics timing=r->metrics;LGDevice *d=targets[i];
     NSString *category=@[@"notAttempted",@"resolved",@"applicationDeadline",@"noRecordReported",@"resolverFailure",@"malformedReply",@"cancelled"][outcome];d.dnsOutcome=category;if(outcome==LGDNSResolved){d.hostname=@(r->name);[d recordAttribute:@"Network name" value:d.hostname source:@"Reverse DNS PTR" confidence:@"Network-reported · unverified" scope:start.networkKey limitations:@"Receipt processing time; name does not authenticate a physical device"];}
