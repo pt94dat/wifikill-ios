@@ -82,3 +82,10 @@ APT metadata is unsigned by GPG. HTTPS and generated hashes provide transport/in
 Source`f8b6cf1577f63fd32e51522eafd0dc23c75c78ab`; main workflow[46093584618](https://github.com/pt94dat/wifikill-ios/actions/runs/46093584618) passed all four jobs.31 portable methods, native model/pipeline/Bonjour/PTR and10 production LocalOnly checks passed;25 real isolated gateway checks passed. Re-downloaded public package80,182bytes, SHA-256`9b0f45685191a488442165f06548b1368a9f72c67ceb3a58339b91f7f1e0bc31`, Info.plist version0.5.1/build6/source match. All five earlier packages retained;0.5.0 checksum unchanged.
 
 [Consolidated Vietnamese findings, failed experiments, release evidence and one-device checklist](RECOVERY.md). Physical iPhone name/MAC/manufacturer/category improvement and performance remain unverified. LocalOnly control success would establish local API behavior only.
+
+
+## Reference/reuse0.6.0-beta.1 —28/11/2026
+
+Source`dd32536c626f78accb5bfc536157d1668b519d7c`, main workflow[46100153805](https://github.com/pt94dat/wifikill-ios/actions/runs/46100153805), all5jobs passed. Actual unprivileged host ICMP20echoes with silentTCPfixture; actual namespaceDHCP→authenticatedHTTPSinventory→native model MAC/name; allocation-only cannot authorizeKill; nativeBonjourTXTclaims; private enrollment decoding/export;36portable methods and28realnamespacechecks pass. Physical acceptance of new0.6features remains pending.
+
+Re-downloaded public package91,844bytes, SHA256`1a9d744bb09279f3d72374e12efa87d7df9353f3d8b8378e5ceace35293cbcbd`; Info0.6.0/build7/source match, minimumiOS12, ARM64/iphoneos-arm, bothApple/MMLanScan licenses present. All6priorpackages retained unchanged. [Consolidated Vietnamese reference findings/reuse decisions/failures/limits/release evidence](REFERENCE_REUSE.md).

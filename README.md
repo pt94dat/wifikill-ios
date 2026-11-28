@@ -47,3 +47,5 @@ Physical update installation, runtime scan accuracy, Internet control, UI and pe
 Detailed APK-derived metadata and device photographs are not included in this public repository. Original Android binaries, branding and tracking SDKs are not redistributed.
 
 Current DNS recovery implementation, experiment failures, physical positive-control procedure and release evidence: [Vietnamese recovery report](Documentation/RECOVERY.md).
+
+0.6 reference analysis, reused source/license provenance, actual DHCP/ICMP/Bonjour evidence, deployment proof and physical checklist: [Vietnamese reference/reuse report](Documentation/REFERENCE_REUSE.md).
